@@ -3084,7 +3084,7 @@
     function ensureSprite(p) {
         if (SPRITES[p.id] !== undefined) return SPRITES[p.id];
         SPRITES[p.id] = 'loading';
-        const path = `../scraper/img/${String(p.id).padStart(3,'0')}_${p.name}.png`;
+        const path = `img/${String(p.id).padStart(3,'0')}_${p.name}.png`;
         loadImage(path,
             (img) => { SPRITES[p.id] = img; if (currentPokemon && currentPokemon.id === p.id) render(); },
             ()    => { SPRITES[p.id] = 'missing'; });
