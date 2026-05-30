@@ -1,0 +1,3308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PokéPalettes — Elemental Cartography</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.7.0/p5.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600&family=Lora:wght@400;500&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --anthropic-dark: #141413;
+            --anthropic-light: #faf9f5;
+            --anthropic-mid-gray: #b0aea5;
+            --anthropic-light-gray: #e8e6dc;
+            --anthropic-orange: #d97757;
+            --anthropic-blue: #6a9bcc;
+            --anthropic-green: #788c5d;
+        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--anthropic-light) 0%, #f5f3ee 100%);
+            min-height: 100vh;
+            color: var(--anthropic-dark);
+        }
+        .container { display: flex; min-height: 100vh; padding: 20px; gap: 20px; }
+        .sidebar {
+            width: 320px; flex-shrink: 0;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            padding: 24px; border-radius: 12px;
+            box-shadow: 0 10px 30px rgba(20, 20, 19, 0.1);
+            overflow-y: auto; overflow-x: hidden;
+        }
+        .sidebar h1 {
+            font-family: 'Lora', serif; font-size: 22px; font-weight: 500;
+            margin-bottom: 8px;
+        }
+        .sidebar .subtitle {
+            color: var(--anthropic-mid-gray); font-size: 13px;
+            margin-bottom: 28px; line-height: 1.4;
+        }
+        .control-section { margin-bottom: 28px; }
+        .control-section h3 {
+            font-size: 15px; font-weight: 600; margin-bottom: 14px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        .control-section h3::before { content: '•'; color: var(--anthropic-orange); font-weight: bold; }
+        .seed-input, select {
+            width: 100%; background: var(--anthropic-light);
+            padding: 10px 12px; border-radius: 8px;
+            font-family: 'Courier New', monospace; font-size: 13px;
+            margin-bottom: 10px; border: 1px solid var(--anthropic-light-gray);
+            text-align: center;
+        }
+        select { font-family: 'Poppins', sans-serif; cursor: pointer; text-align: left; }
+        .seed-input:focus, select:focus {
+            outline: none; border-color: var(--anthropic-orange);
+            box-shadow: 0 0 0 2px rgba(217, 119, 87, 0.1); background: white;
+        }
+        .seed-controls { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+        .control-group { margin-bottom: 16px; }
+        .control-group label {
+            display: block; font-size: 13px; font-weight: 500; margin-bottom: 6px;
+        }
+        .slider-container { display: flex; align-items: center; gap: 10px; }
+        .slider-container input[type="range"] {
+            flex: 1; height: 4px; background: var(--anthropic-light-gray);
+            border-radius: 2px; outline: none; -webkit-appearance: none;
+        }
+        .slider-container input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 14px; height: 14px;
+            background: var(--anthropic-orange); border-radius: 50%; cursor: pointer;
+        }
+        .slider-container input[type="range"]::-moz-range-thumb {
+            width: 14px; height: 14px; background: var(--anthropic-orange);
+            border-radius: 50%; border: none; cursor: pointer;
+        }
+        .value-display {
+            font-family: 'Courier New', monospace; font-size: 11px;
+            color: var(--anthropic-mid-gray); min-width: 48px; text-align: right;
+        }
+        .toggle-row {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 14px;
+        }
+        .toggle-row label { font-size: 13px; font-weight: 500; }
+        .button {
+            background: var(--anthropic-orange); color: white; border: none;
+            padding: 9px 14px; border-radius: 6px; font-size: 13px;
+            font-weight: 500; cursor: pointer; transition: all 0.15s ease;
+            width: 100%; font-family: 'Poppins', sans-serif;
+        }
+        .button:hover { background: #c86641; transform: translateY(-1px); }
+        .button.secondary { background: var(--anthropic-blue); }
+        .button.secondary:hover { background: #5a8bb8; }
+        .button.tertiary { background: var(--anthropic-green); }
+        .button.tertiary:hover { background: #6b7b52; }
+        .button-row { display: flex; gap: 8px; }
+        .button-row .button { flex: 1; }
+        .canvas-area { flex: 1; display: flex; align-items: center; justify-content: center; min-width: 0; }
+        #canvas-container {
+            max-width: 700px; border-radius: 8px; overflow: hidden;
+            box-shadow: 0 20px 40px rgba(20, 20, 19, 0.15); background: #1a1a1a;
+        }
+        #canvas-container canvas { display: block; width: 100% !important; height: auto !important; }
+        .loading {
+            display: flex; align-items: center; justify-content: center;
+            font-size: 16px; color: var(--anthropic-mid-gray);
+            min-height: 880px; width: 630px;
+        }
+        .meta {
+            display: flex; gap: 8px; flex-wrap: wrap; margin: 8px 0 18px;
+            font-family: 'Courier New', monospace; font-size: 11px;
+        }
+        .meta .chip {
+            padding: 3px 8px; border-radius: 999px; color: white;
+        }
+        .palette-strip {
+            display: flex; height: 14px; border-radius: 4px;
+            overflow: hidden; margin-bottom: 18px;
+            border: 1px solid var(--anthropic-light-gray);
+        }
+        .palette-strip > div { height: 100%; }
+        .roles-panel { margin-top: 12px; font-size: 10px; color: var(--anthropic-mid-gray); font-family: 'Courier New', monospace; }
+        .roles-panel .role-row { display: flex; align-items: center; gap: 6px; margin-bottom: 4px; }
+        .roles-panel .role-row .lbl { width: 70px; }
+        .roles-panel .role-row .sw { width: 16px; height: 16px; border-radius: 3px; border: 1px solid var(--anthropic-light-gray); }
+        .roles-panel .accent-row { display: flex; gap: 3px; flex-wrap: wrap; }
+        .roles-panel .accent-row .sw { width: 12px; height: 12px; border-radius: 2px; border: 1px solid var(--anthropic-light-gray); }
+        @media (max-width: 800px) {
+            .container { flex-direction: column; }
+            .sidebar { width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>PokéPalettes</h1>
+            <div class="subtitle">Elemental cartography — generative card backdrops for the original 151.</div>
+
+            <div class="control-section">
+                <h3>Pokémon</h3>
+                <select id="pokemon-select" onchange="selectPokemon(this.value)">
+                    <option value="">Loading…</option>
+                </select>
+                <div class="meta" id="meta"></div>
+                <div class="palette-strip" id="palette-strip"></div>
+                <div class="roles-panel" id="roles-panel"></div>
+            </div>
+
+            <div class="control-section">
+                <h3>Seed</h3>
+                <input type="number" id="seed-input" class="seed-input" value="12345" onchange="updateSeed()">
+                <div class="seed-controls">
+                    <button class="button secondary" onclick="previousSeed()">← Prev</button>
+                    <button class="button secondary" onclick="nextSeed()">Next →</button>
+                </div>
+                <button class="button tertiary" onclick="randomSeedAndUpdate()">↻ Random</button>
+            </div>
+
+            <div class="control-section">
+                <h3>Parameters</h3>
+                <div class="control-group">
+                    <label>Algorithm Intensity</label>
+                    <div class="slider-container">
+                        <input type="range" id="intensity" min="0.3" max="1.8" step="0.05" value="1.0" oninput="updateParam('intensity', this.value)">
+                        <span class="value-display" id="intensity-value">1.00</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>Void Size</label>
+                    <div class="slider-container">
+                        <input type="range" id="voidSize" min="0.3" max="1.0" step="0.02" value="0.5" oninput="updateParam('voidSize', this.value)">
+                        <span class="value-display" id="voidSize-value">0.50</span>
+                    </div>
+                </div>
+                <div class="control-group">
+                    <label>Frame Opacity</label>
+                    <div class="slider-container">
+                        <input type="range" id="frameOpacity" min="0" max="1" step="0.05" value="0.9" oninput="updateParam('frameOpacity', this.value)">
+                        <span class="value-display" id="frameOpacity-value">0.90</span>
+                    </div>
+                </div>
+                <div class="toggle-row">
+                    <label for="showFrame">Show header banner</label>
+                    <input type="checkbox" id="showFrame" checked onchange="updateParam('showFrame', this.checked)">
+                </div>
+                <div class="toggle-row">
+                    <label for="showVoid">Show illustration area</label>
+                    <input type="checkbox" id="showVoid" checked onchange="updateParam('showVoid', this.checked)">
+                </div>
+            </div>
+
+            <div class="control-section">
+                <h3>Actions</h3>
+                <div class="button-row">
+                    <button class="button" onclick="downloadCanvas()">Download PNG</button>
+                    <button class="button secondary" onclick="resetParameters()">Reset</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="canvas-area">
+            <div id="canvas-container">
+                <div class="loading">Loading palettes…</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    // ═══════════════════════════════════════════════════════════════════════
+    // GEN-1 TYPE MAP (codes: N F W E G I T=fight P U=ground L=fly Y=psy B R H=ghost D S)
+    // ═══════════════════════════════════════════════════════════════════════
+    const TYPE_CODE = {N:'normal',F:'fire',W:'water',E:'electric',G:'grass',I:'ice',T:'fighting',P:'poison',U:'ground',L:'flying',Y:'psychic',B:'bug',R:'rock',H:'ghost',D:'dragon',S:'steel'};
+    const TYPE_COLOR = {
+        normal:'#a8a878',fire:'#f08030',water:'#6890f0',electric:'#f8d030',
+        grass:'#78c850',ice:'#98d8d8',fighting:'#c03028',poison:'#a040a0',
+        ground:'#e0c068',flying:'#a890f0',psychic:'#f85888',bug:'#a8b820',
+        rock:'#b8a038',ghost:'#705898',dragon:'#7038f8',steel:'#b8b8d0'
+    };
+    // 151 entries, 1-indexed (index 0 unused)
+    const TYPES_RAW = [null,
+      "GP","GP","GP","F","F","FL","W","W","W","B",
+      "B","BL","BP","BP","BP","NL","NL","NL","N","N",
+      "NL","NL","P","P","E","E","U","U","P","P",
+      "PU","P","P","PU","N","N","F","F","N","N",
+      "PL","PL","GP","GP","GP","BG","BG","BP","BP","U",
+      "U","N","N","W","W","T","T","F","F","W",
+      "W","WT","Y","Y","Y","T","T","T","GP","GP",
+      "GP","WP","WP","RU","RU","RU","F","F","WY","WY",
+      "E","E","NL","NL","NL","W","WI","P","P","W",
+      "WI","HP","HP","HP","RU","Y","Y","W","W","E",
+      "E","GY","GY","U","U","T","T","N","P","P",
+      "UR","UR","N","G","N","W","W","W","W","W",
+      "WY","Y","BL","IY","E","F","B","N","W","WL",
+      "WI","N","N","W","E","F","N","RW","RW","RW",
+      "RW","RL","N","IL","EL","FL","D","D","DL","Y","Y"
+    ];
+    function typesFor(id) {
+        const raw = TYPES_RAW[id] || "N";
+        return raw.split('').map(c => TYPE_CODE[c]);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // STATE
+    // ═══════════════════════════════════════════════════════════════════════
+    let POKEDEX = {};        // id -> {id, name, colors:[{hex,count}], total}
+    let POKEDEX_LIST = [];   // ordered
+    let currentPokemon = null;
+
+    let params = {
+        seed: 12345,
+        pokemonId: 6,        // default: charizard
+        intensity: 1.0,
+        voidSize: 0.5,
+        frameOpacity: 0.9,
+        showFrame: true,
+        showVoid: true
+    };
+    let defaultParams = {...params};
+
+    const CANVAS_W = 630;
+    const CANVAS_H = 880;
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // CSV LOADING + PALETTE PARSING
+    // ═══════════════════════════════════════════════════════════════════════
+    async function loadPokedex() {
+        // Try local path first, then ../scraper/ (depending on serve root)
+        let text;
+        for (const path of ['pokepalettes.csv', '../scraper/pokepalettes.csv']) {
+            try {
+                const r = await fetch(path);
+                if (r.ok) { text = await r.text(); break; }
+            } catch (e) {}
+        }
+        if (!text) throw new Error('Could not load pokepalettes.csv');
+
+        text.split('\n').forEach(line => {
+            line = line.trim();
+            if (!line) return;
+            const parts = line.split(',');
+            const id = parseInt(parts[0], 10);
+            const name = parts[1];
+            // parts[2] is empty (legacy type slot)
+            const colors = [];
+            let total = 0;
+            for (let i = 3; i + 1 < parts.length; i += 2) {
+                const hex = parts[i].trim();
+                const count = parseInt(parts[i+1], 10);
+                if (hex && !isNaN(count)) {
+                    colors.push({ hex, count });
+                    total += count;
+                }
+            }
+            const entry = { id, name, colors, total, types: typesFor(id) };
+            entry.roles = extractRoles(entry);
+            POKEDEX[id] = entry;
+            POKEDEX_LIST.push(entry);
+        });
+        POKEDEX_LIST.sort((a, b) => a.id - b.id);
+    }
+
+    function populateDropdown() {
+        const sel = document.getElementById('pokemon-select');
+        sel.innerHTML = '';
+        POKEDEX_LIST.forEach(p => {
+            const opt = document.createElement('option');
+            opt.value = p.id;
+            opt.textContent = `#${String(p.id).padStart(3,'0')}  ${p.name}`;
+            sel.appendChild(opt);
+        });
+        sel.value = params.pokemonId;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // COLOR UTILITIES
+    // ═══════════════════════════════════════════════════════════════════════
+    function hexToRgb(hex) {
+        const m = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+        return m ? [parseInt(m[1],16), parseInt(m[2],16), parseInt(m[3],16)] : [0,0,0];
+    }
+    function rgbToHex(r, g, b) {
+        const h = n => n.toString(16).padStart(2, '0');
+        return '#' + h(Math.round(r)) + h(Math.round(g)) + h(Math.round(b));
+    }
+    function rgbToHsl(r, g, b) {
+        r /= 255; g /= 255; b /= 255;
+        const max = Math.max(r, g, b), min = Math.min(r, g, b);
+        let h, s, l = (max + min) / 2;
+        if (max === min) { h = 0; s = 0; }
+        else {
+            const d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch (max) {
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+        return [h, s, l];
+    }
+    function luminance(hex) {
+        const [r,g,b] = hexToRgb(hex);
+        return 0.299*r + 0.587*g + 0.114*b;
+    }
+    function lerpHex(a, b, t) {
+        const ar = hexToRgb(a), br = hexToRgb(b);
+        return [
+            ar[0] + (br[0] - ar[0]) * t,
+            ar[1] + (br[1] - ar[1]) * t,
+            ar[2] + (br[2] - ar[2]) * t
+        ];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Type → preferred hue range (0..1 hue space; may wrap past 0).
+    // Used to bias palette extraction toward thematically appropriate hues.
+    // ─────────────────────────────────────────────────────────────────────
+    const TYPE_HUE = {
+        fire:     [0.95, 0.12], water:    [0.50, 0.70], grass:    [0.20, 0.42],
+        electric: [0.12, 0.18], ice:      [0.45, 0.60], fighting: [0.95, 0.05],
+        poison:   [0.70, 0.85], ground:   [0.07, 0.13], flying:   [0.55, 0.70],
+        psychic:  [0.85, 0.97], bug:      [0.18, 0.30], rock:     [0.07, 0.13],
+        ghost:    [0.70, 0.80], dragon:   [0.65, 0.78], steel:    null,
+        normal:   null
+    };
+    function hueAffinity(h, type) {
+        const range = TYPE_HUE[type];
+        if (!range) return 1.0;
+        const [lo, hi] = range;
+        const inside = lo <= hi ? (h >= lo && h <= hi) : (h >= lo || h <= hi);
+        if (inside) return 1.0;
+        const cdist = a => Math.min(Math.abs(a), 1 - Math.abs(a));
+        const dist = Math.min(cdist(h - lo), cdist(h - hi));
+        return Math.max(0.10, 1.0 - dist * 3.5);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Color role extraction (per philosophy v2 §2.2)
+    // Input: pokemon = { colors, total, types }
+    // Output: { substrate, primary, secondary, accent[], outline }
+    // ─────────────────────────────────────────────────────────────────────
+    function extractRoles(p) {
+        const primaryType = (p.types && p.types[0]) || null;
+        const enriched = [];
+        for (const { hex, count } of p.colors) {
+            const [r, g, b] = hexToRgb(hex);
+            const [h, s, l] = rgbToHsl(r, g, b);
+            // Reject near-white (sprite-extraction background artifact)
+            if (l > 0.97 && s < 0.05) continue;
+            // Type-affinity weight: penalize off-hue colors, but only when they're saturated
+            // enough to "count" as a color choice (greys stay neutral).
+            const aff = s > 0.18 ? hueAffinity(h, primaryType) : 0.85;
+            enriched.push({ hex, count, h, s, l, score: count * aff, aff });
+        }
+
+        // Buckets — accent is strictly "highlight": both saturated AND bright.
+        // (The old rule sat>0.85 wrongly pulled dark-saturated body shadows into accent.)
+        const outline = enriched.filter(c => c.l < 0.10);
+        const accent  = enriched.filter(c => c.l >= 0.10 && c.s > 0.55 && c.l > 0.58);
+        const body    = enriched.filter(c => c.l >= 0.10 && !accent.includes(c));
+
+        // Body sorted by hue-weighted score (not raw count)
+        body.sort((a, b) => b.score - a.score);
+        // Accents prefer on-hue + saturated
+        accent.sort((a, b) => (b.s * b.aff) - (a.s * a.aff));
+        outline.sort((a, b) => b.count - a.count);
+
+        // Substrate: highest-scored body with lum <= 0.40. Fallback: darkest body.
+        let substrate = body.find(c => c.l <= 0.40);
+        if (!substrate && body.length) {
+            substrate = body.slice().sort((a, b) => a.l - b.l)[0];
+        }
+        const subHex = substrate?.hex;
+
+        // Primary/secondary: top-2 scored body excluding substrate
+        const others = body.filter(c => c.hex !== subHex);
+        const primary = others[0];
+        const secondary = others[1] || others[0];
+
+        // Accents: prefer the on-hue ones; if none, fall back to most-saturated body
+        let accents = accent;
+        if (accents.length === 0) {
+            accents = body.slice().sort((a, b) => b.s - a.s).slice(0, 3);
+        }
+
+        // Full bucket totals (use ORIGINAL counts, not affinity-scored, so weighted
+        // sampling reflects actual pixel distribution — affinity only governs which
+        // colors land in which role bucket, not their weight inside it).
+        const sumCount = arr => arr.reduce((s, c) => s + c.count, 0);
+
+        return {
+            substrate: subHex || '#2a2a2a',
+            primary:   primary?.hex || subHex || '#888888',
+            secondary: secondary?.hex || primary?.hex || '#666666',
+            accent:    accents.slice(0, 4).map(c => c.hex),
+            outline:   outline[0]?.hex || '#000000',
+            // Full bucket arrays for weighted sampling
+            buckets: {
+                body:    body,
+                accent:  accents,
+                outline: outline,
+                bodyTotal:   sumCount(body),
+                accentTotal: sumCount(accents),
+            }
+        };
+    }
+
+    // Weighted pick from a role bucket (uses p5 seeded random for reproducibility).
+    // Bucket entries are { hex, count, ... }; weight ∝ count.
+    function pickBucket(bucket, total) {
+        if (!bucket || bucket.length === 0) return '#888888';
+        let r = random() * total;
+        for (const c of bucket) {
+            r -= c.count;
+            if (r <= 0) return c.hex;
+        }
+        return bucket[bucket.length - 1].hex;
+    }
+
+    // Weighted picker: returns hex chosen with prob ∝ count.
+    function pickWeighted(colors, total) {
+        let r = random() * total;
+        for (const c of colors) {
+            r -= c.count;
+            if (r <= 0) return c.hex;
+        }
+        return colors[colors.length - 1].hex;
+    }
+    function topColors(p, n) {
+        return p.colors.slice(0, Math.min(n, p.colors.length)).map(c => c.hex);
+    }
+    function darkestOf(p, k=6) {
+        return topColors(p, k).reduce((a,b) => luminance(a) < luminance(b) ? a : b);
+    }
+    function lightestOf(p, k=8) {
+        return topColors(p, k).reduce((a,b) => luminance(a) > luminance(b) ? a : b);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // P5 LIFECYCLE
+    // ═══════════════════════════════════════════════════════════════════════
+    function setup() {
+        const c = createCanvas(CANVAS_W, CANVAS_H);
+        c.parent('canvas-container');
+        const loading = document.querySelector('.loading');
+        if (loading) loading.style.display = 'none';
+        noLoop();
+        render();
+    }
+    function draw() { /* render() handles drawing */ }
+
+    function render() {
+        if (!currentPokemon) return;
+        // Combine user seed with pokemon ID so every pokemon gets a unique result per seed
+        const effectiveSeed = params.seed * 10007 + currentPokemon.id * 997;
+        randomSeed(effectiveSeed);
+        noiseSeed(effectiveSeed + 31337);
+
+        const p = currentPokemon;
+        const primary = p.types[0] || 'normal';
+        const secondary = p.types[1] || null;
+
+        // --- Base layer: primary type engine ---
+        runEngine(primary, p, false);
+
+        // --- Secondary layer: composite via type-pair blend strategy ---
+        if (secondary) {
+            const buf = createGraphics(CANVAS_W, CANVAS_H);
+            buf.randomSeed(effectiveSeed + 1);
+            buf.noiseSeed(effectiveSeed + 31338);
+            runEngineOn(buf, secondary, p, true);  // pass asSecondary=true
+            const strategy = typeBlend(primary, secondary);
+            push();
+            blendMode(strategy.mode);
+            tint(255, strategy.alpha);
+            image(buf, 0, 0);
+            pop();
+            blendMode(BLEND);
+            buf.remove();
+        }
+
+        // --- Void mask (illustration area) ---
+        if (params.showVoid) drawVoid(p);
+        // --- Card frame ---
+        if (params.showFrame) drawFrame(p);
+    }
+
+    // Per-pair composition strategy (philosophy v2 §4). Returns {mode, alpha}.
+    // Secondary buffer has transparent substrate so only structural elements
+    // composite. Alpha needs to be high (200+) for those elements to read.
+    function typeBlend(primary, secondary) {
+        const defaults = {
+            fire:     { mode: SCREEN,   alpha: 220 },  // ignite primary brighter
+            electric: { mode: SCREEN,   alpha: 230 },  // lightning is highlight-y
+            ghost:    { mode: MULTIPLY, alpha: 220 },  // deepens with phantom wisps
+            poison:   { mode: OVERLAY,  alpha: 230 },  // toxic blobs mix in
+            flying:   { mode: SCREEN,   alpha: 220 },  // clouds + wind streaks
+            ice:      { mode: SCREEN,   alpha: 230 },  // crystals show through
+            water:    { mode: OVERLAY,  alpha: 230 },  // depth bands
+            psychic:  { mode: SCREEN,   alpha: 220 },  // mandala + rays
+            grass:    { mode: OVERLAY,  alpha: 230 },  // vines + leaves
+            bug:      { mode: OVERLAY,  alpha: 230 },  // hex cells
+            rock:     { mode: MULTIPLY, alpha: 235 },  // cell texture
+            ground:   { mode: MULTIPLY, alpha: 230 },  // strata bands
+            fighting: { mode: SCREEN,   alpha: 225 },  // impact lines
+            dragon:   { mode: SCREEN,   alpha: 225 },  // spirals
+            steel:    { mode: OVERLAY,  alpha: 220 },  // striations
+            normal:   { mode: OVERLAY,  alpha: 220 },  // truchet
+        };
+        return defaults[secondary] || { mode: OVERLAY, alpha: 200 };
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ENGINE DISPATCH
+    // Only Fire is implemented to spec (v2). Others fall through to a
+    // palette-driven noise placeholder until they're rebuilt.
+    // ═══════════════════════════════════════════════════════════════════════
+    function runEngine(type, p)                  { return dispatch(window, type, p, false); }
+    function runEngineOn(g, type, p, secondary)  { return dispatch(g, type, p, secondary); }
+    function dispatch(g, type, p, asSecondary) {
+        SECONDARY_MODE = !!asSecondary;
+        try {
+            return dispatchInner(g, type, p, asSecondary);
+        } finally {
+            SECONDARY_MODE = false;
+        }
+    }
+    function dispatchInner(g, type, p, asSecondary) {
+        switch (type) {
+            case 'fire':     return engineFire(g, p, asSecondary);
+            case 'water':    return engineWater(g, p, asSecondary);
+            case 'grass':    return engineGrass(g, p, asSecondary);
+            case 'electric': return engineElectric(g, p, asSecondary);
+            case 'psychic':  return enginePsychic(g, p, asSecondary);
+            case 'poison':   return enginePoison(g, p, asSecondary);
+            case 'ice':      return engineIce(g, p, asSecondary);
+            case 'fighting': return engineFighting(g, p, asSecondary);
+            case 'ground':   return engineGround(g, p, asSecondary);
+            case 'flying':   return engineFlying(g, p, asSecondary);
+            case 'bug':      return engineBug(g, p, asSecondary);
+            case 'rock':     return engineRock(g, p, asSecondary);
+            case 'ghost':    return engineGhost(g, p, asSecondary);
+            case 'dragon':   return engineDragon(g, p, asSecondary);
+            case 'steel':    return engineSteel(g, p, asSecondary);
+            case 'normal':   return engineNormal(g, p, asSecondary);
+            default:         return engineFallback(g, p, type);
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // SHARED PRIMITIVES (per philosophy v2 §2.3)
+    // ═══════════════════════════════════════════════════════════════════════
+    // Module-level flag: when true, gradientFill + applyVignette become no-ops.
+    // Set by dispatch() when rendering a secondary type to a composite buffer.
+    let SECONDARY_MODE = false;
+
+    // Vertical gradient fill (darker top, lighter bottom or vice versa)
+    function gradientFill(g, topHex, bottomHex) {
+        if (SECONDARY_MODE) return;
+        const t = hexToRgb(topHex), b = hexToRgb(bottomHex);
+        g.noStroke();
+        const STEPS = 80;
+        const h = CANVAS_H / STEPS;
+        for (let i = 0; i < STEPS; i++) {
+            const k = i / (STEPS - 1);
+            g.fill(t[0] + (b[0]-t[0])*k, t[1] + (b[1]-t[1])*k, t[2] + (b[2]-t[2])*k);
+            g.rect(0, i * h, CANVAS_W, h + 1);
+        }
+    }
+    // Corner-to-center vignette darkening using a native radial gradient.
+    // strength ∈ [0,1]: how dark the corners get.
+    function applyVignette(g, strength) {
+        if (SECONDARY_MODE) return;
+        const ctx = g.drawingContext;
+        ctx.save();
+        const cx = CANVAS_W / 2, cy = CANVAS_H / 2;
+        const inner = Math.min(CANVAS_W, CANVAS_H) * 0.30;
+        const outer = Math.hypot(CANVAS_W, CANVAS_H) * 0.55;
+        const grad = ctx.createRadialGradient(cx, cy, inner, cx, cy, outer);
+        grad.addColorStop(0, 'rgba(0,0,0,0)');
+        grad.addColorStop(1, `rgba(0,0,0,${strength})`);
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+        ctx.restore();
+    }
+    // Soft radial bloom dot
+    function drawBloom(g, x, y, hex, radius, intensity) {
+        const [r, gn, b] = hexToRgb(hex);
+        g.push();
+        g.noStroke();
+        g.blendMode(g.SCREEN);
+        for (let i = 4; i >= 1; i--) {
+            const rr = radius * i;
+            const a = intensity * (60 / i);
+            g.fill(r, gn, b, a);
+            g.circle(x, y, rr);
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+    }
+    // Domain warp: sample noise at coordinates that are themselves noise-displaced.
+    // Makes any noise-driven structure feel fluid/organic instead of mechanical.
+    // Returns a {dx, dy} displacement vector to add to (x, y) before sampling.
+    function domainWarp(x, y, amp, seed = 0) {
+        const dx = (noise(x * 0.0028, y * 0.0028, seed)        - 0.5) * amp;
+        const dy = (noise(x * 0.0028, y * 0.0028, seed + 31.7) - 0.5) * amp;
+        return { dx, dy };
+    }
+
+    // Poisson disk 1D — spaced points along a line with minimum spacing,
+    // small randomness. Use for evenly-distributed-but-irregular placements.
+    function poissonLine(min, max, minSpacing, jitter = 0.6) {
+        const pts = [];
+        let x = min + random() * minSpacing;
+        while (x < max) {
+            pts.push(x);
+            x += minSpacing * (1.0 + random() * jitter);
+        }
+        return pts;
+    }
+
+    // Poisson disk 2D — Bridson-ish with rejection sampling. Good enough for
+    // a few dozen well-spaced points.
+    function poissonRect(xMin, xMax, yMin, yMax, minDist, maxPoints, maxAttempts) {
+        const pts = [];
+        const minDistSq = minDist * minDist;
+        let attempts = 0;
+        const cap = maxAttempts || maxPoints * 30;
+        while (pts.length < maxPoints && attempts < cap) {
+            const cx = random(xMin, xMax);
+            const cy = random(yMin, yMax);
+            let valid = true;
+            for (const p of pts) {
+                const dx = cx - p.x, dy = cy - p.y;
+                if (dx * dx + dy * dy < minDistSq) { valid = false; break; }
+            }
+            if (valid) pts.push({ x: cx, y: cy });
+            attempts++;
+        }
+        return pts;
+    }
+
+    // 2D curl noise from a Perlin scalar field. Divergence-free → fluid-looking flow.
+    function curlNoise(x, y, scale, t) {
+        const eps = 1.0;
+        // ∂n/∂y
+        const n1 = noise((x) * scale, (y + eps) * scale, t);
+        const n2 = noise((x) * scale, (y - eps) * scale, t);
+        // ∂n/∂x
+        const n3 = noise((x + eps) * scale, y * scale, t);
+        const n4 = noise((x - eps) * scale, y * scale, t);
+        const dndy = (n1 - n2) / (2 * eps);
+        const dndx = (n3 - n4) / (2 * eps);
+        return { dx:  dndy, dy: -dndx };
+    }
+    // Sprite-corner avoidance: returns 1 inside the sprite "exclusion zone", 0 elsewhere, smooth falloff.
+    function spriteHaloMask(x, y) {
+        const r = voidRect();
+        const cx = r.x + r.w * 0.5;
+        const cy = r.y + r.h * 0.55; // bias toward sprite (bottom of rect)
+        const radius = Math.min(r.w, r.h) * 0.55;
+        const d = Math.hypot(x - cx, y - cy);
+        if (d > radius * 1.6) return 0;
+        if (d < radius) return 1;
+        return 1 - (d - radius) / (radius * 0.6);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ENGINE: FIRE — Bezier flame tongues + domain warp + Poisson placement
+    // Layers: substrate gradient → spawn envelope → poisson-placed tongues
+    //         (closed polygons with per-segment color, recursive tip splits) →
+    //         poisson embers at tongue tips → vignette.
+    // ═══════════════════════════════════════════════════════════════════════
+    function renderFlameTongue(g, tongue, substrate, warpSeed) {
+        const { rootX, rootY, height, baseWidth, curlDir, curlAmount,
+                baseColor, midColor, tipColor, depth, wiggleSeed } = tongue;
+
+        // Build spine: 72 samples (dense enough for continuous blob overlap)
+        const SPINE = 72;
+        const spine = [];
+        for (let i = 0; i <= SPINE; i++) {
+            const t = i / SPINE;
+            // Y rises from rootY with easing
+            const yRaw = rootY - height * Math.pow(t, 0.92);
+            // Curl: smooth whipping with progressive falloff (no t=0.55 boundary)
+            const curlBase = curlDir * curlAmount * height * 0.20 * Math.pow(t, 1.35);
+            // Tip flicker via sin term — adds organic side-to-side movement
+            const tipFlick = curlDir * curlAmount * height * 0.18
+                             * Math.pow(t, 1.6)
+                             * Math.sin(t * Math.PI * 2.4 + wiggleSeed * 0.7);
+            let xRaw = rootX + curlBase + tipFlick;
+            // Multi-octave noise wiggle for organic turbulence
+            const wiggle1 = (noise(wiggleSeed, t * 5) - 0.5) * 32 * Math.pow(t, 0.4);
+            const wiggle2 = (noise(wiggleSeed + 17, t * 15) - 0.5) * 12 * Math.pow(t, 0.6);
+            xRaw += wiggle1 + wiggle2;
+            // Domain warp
+            const w = domainWarp(xRaw, yRaw, 16, warpSeed);
+            const x = xRaw + w.dx;
+            const y = yRaw + w.dy * 0.25;
+            // SINGLE smooth width formula — no discontinuity. Cosine-based curve
+            // gives a wide base smoothly tapering to a sharp wispy tip.
+            // At t=0: 1.0; t=0.3: ~0.87; t=0.6: ~0.59; t=0.85: ~0.23; t=1: 0
+            const widthTaper = Math.cos(Math.pow(t, 0.78) * Math.PI * 0.5);
+            // Small noise-driven width perturbation breaks uniform appearance
+            // without creating discontinuities (clamped to ±15%)
+            const widthNoise = 1.0 + (noise(wiggleSeed + 7, t * 8) - 0.5) * 0.30;
+            const halfWidth = baseWidth * 0.5 * widthTaper * widthNoise;
+            spine.push({ x, y, halfWidth });
+        }
+
+        // Render as stacked radial blobs along the spine — each blob is a
+        // radial gradient with soft edges. Their overlap creates a continuous
+        // fuzzy flame body with no hard polygon edges. Color sampled by age.
+        const ctx = g.drawingContext;
+        const subRgb  = hexToRgb(substrate);
+        const baseRgb = hexToRgb(baseColor);
+        const midRgb  = hexToRgb(midColor);
+        const tipRgb  = hexToRgb(tipColor);
+        function colorAtAge(t) {
+            // Returns [r,g,b]
+            if (t < 0.10) {
+                const k = t / 0.10;
+                return [subRgb[0] + (baseRgb[0]-subRgb[0])*k,
+                        subRgb[1] + (baseRgb[1]-subRgb[1])*k,
+                        subRgb[2] + (baseRgb[2]-subRgb[2])*k];
+            } else if (t < 0.45) {
+                const k = (t - 0.10) / 0.35;
+                return [baseRgb[0] + (midRgb[0]-baseRgb[0])*k,
+                        baseRgb[1] + (midRgb[1]-baseRgb[1])*k,
+                        baseRgb[2] + (midRgb[2]-baseRgb[2])*k];
+            } else {
+                const k = Math.min(1, (t - 0.45) / 0.45);
+                return [midRgb[0] + (tipRgb[0]-midRgb[0])*k,
+                        midRgb[1] + (tipRgb[1]-midRgb[1])*k,
+                        midRgb[2] + (tipRgb[2]-midRgb[2])*k];
+            }
+        }
+        // Two-pass blob rendering for solid continuous flame:
+        // Pass 1: large radius "halo" blobs build the diffuse outer flame body
+        // Pass 2: tight "core" blobs fill the inner brighter region
+        // The dual-pass approach guarantees no gaps even with width variation.
+        ctx.save();
+        for (let pass = 0; pass < 2; pass++) {
+            for (let i = 0; i < spine.length; i++) {
+                const s = spine[i];
+                const t = i / (spine.length - 1);
+                const [cr, cg, cb] = colorAtAge(t);
+                // Alpha curve: rises quickly at base, stays high through middle,
+                // tapers smoothly toward tip — no sin discontinuities
+                const lifeAlpha = (1 - t) * 0.80 + 0.20 * Math.sin(t * Math.PI);
+                if (pass === 0) {
+                    // Halo: wide, soft, low-alpha
+                    const r = Math.max(3, s.halfWidth * 2.0);
+                    const aHalo = 0.35 * lifeAlpha;
+                    const grad = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, r);
+                    grad.addColorStop(0.0, `rgba(${cr|0},${cg|0},${cb|0},${aHalo})`);
+                    grad.addColorStop(0.6, `rgba(${cr|0},${cg|0},${cb|0},${aHalo * 0.45})`);
+                    grad.addColorStop(1.0, `rgba(${cr|0},${cg|0},${cb|0},0)`);
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Core: tight, more opaque, brighter
+                    const r = Math.max(2, s.halfWidth * 1.15);
+                    const aCore = 0.55 * lifeAlpha;
+                    const grad = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, r);
+                    grad.addColorStop(0.0, `rgba(${cr|0},${cg|0},${cb|0},${aCore})`);
+                    grad.addColorStop(0.7, `rgba(${cr|0},${cg|0},${cb|0},${aCore * 0.5})`);
+                    grad.addColorStop(1.0, `rgba(${cr|0},${cg|0},${cb|0},0)`);
+                    ctx.fillStyle = grad;
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, r, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+        }
+        ctx.restore();
+
+        // Recursive tip-splitting: spawn 1–2 smaller tongues from upper section
+        if (depth > 0 && height > 200) {
+            const nChildren = 1 + Math.floor(random() * 2);
+            for (let k = 0; k < nChildren; k++) {
+                const branchT = 0.55 + random() * 0.30;
+                const branchIdx = Math.floor(branchT * spine.length);
+                const bp = spine[branchIdx];
+                renderFlameTongue(g, {
+                    rootX: bp.x + (random() - 0.5) * baseWidth * 0.4,
+                    rootY: bp.y,
+                    height: height * (0.35 + random() * 0.30),
+                    baseWidth: baseWidth * (0.40 + random() * 0.25),
+                    curlDir: random() < 0.5 ? -1 : 1,
+                    curlAmount: 0.4 + random() * 0.8,
+                    baseColor: midColor,
+                    midColor: tipColor,
+                    tipColor: tipColor,
+                    depth: 0,
+                    wiggleSeed: random() * 1000,
+                }, substrate, warpSeed);
+            }
+        }
+
+        return spine[spine.length - 1]; // return tip for ember placement
+    }
+
+    function engineFire(g, p) {
+        const roles = p.roles;
+        const sub = roles.substrate;
+        const prim = roles.primary;
+        const bodyBucket = roles.buckets.body;
+        const bodyTotal  = roles.buckets.bodyTotal;
+        const accBucket  = roles.buckets.accent;
+        const accTotal   = roles.buckets.accentTotal;
+
+        // ── 1. SUBSTRATE: vertical gradient (darker sky, warmed substrate at base)
+        const topRgb = lerpHex(sub, '#000000', 0.50);
+        const botRgb = lerpHex(sub, prim, 0.18);
+        gradientFill(g, rgbToHex(...topRgb), rgbToHex(...botRgb));
+
+        // ── 2. ENVELOPE + warp seeds
+        const intens = params.intensity;
+        const warpSeed = random() * 1000;
+        const envSeed  = random() * 1000;
+        function flameDensity(x) {
+            return 0.20 + 0.80 * noise(x * 0.0042, envSeed);
+        }
+
+        // ── 3. POISSON-DISK tongue root placement along the bottom
+        const baseSpacing = 18 - intens * 6;   // tighter spacing → more flames
+        const roots = poissonLine(-30, CANVAS_W + 30, baseSpacing, 0.50);
+
+        // ── 4. TONGUE SPECS: each root produces a tongue iff envelope + sprite
+        // halo allow. Tall pillars at high-density spots; short licks at low.
+        const tongues = [];
+        for (const rx of roots) {
+            if (spriteHaloMask(rx, CANVAS_H * 0.86) > 0.55) continue;
+            const d = flameDensity(rx);
+            if (random() > 0.45 + d * 0.55) continue;
+
+            const heightCore = 90 + 500 * Math.pow(d, 1.25);
+            const height = heightCore * (0.60 + random() * 0.80);
+            const baseWidth = 24 + d * 60 + random() * 32;
+            tongues.push({
+                rootX: rx,
+                rootY: CANVAS_H + 8,
+                height,
+                baseWidth,
+                curlDir: random() < 0.5 ? -1 : 1,
+                curlAmount: 0.25 + random() * 1.15,
+                baseColor: pickBucket(bodyBucket, bodyTotal),
+                midColor:  pickBucket(bodyBucket, bodyTotal),
+                tipColor:  pickBucket(accBucket, accTotal),
+                depth: height > 260 ? 1 : 0,
+                wiggleSeed: random() * 1000,
+            });
+        }
+
+        // Molten-pool: short fat tongues densely packed at the base for a solid
+        // overlap that reads as a furnace floor.
+        for (let k = 0; k < 28; k++) {
+            const x = random(-20, CANVAS_W + 20);
+            if (spriteHaloMask(x, CANVAS_H * 0.95) > 0.6) continue;
+            tongues.push({
+                rootX: x,
+                rootY: CANVAS_H + 12,
+                height: 45 + random() * 80,
+                baseWidth: 70 + random() * 60,
+                curlDir: random() < 0.5 ? -1 : 1,
+                curlAmount: 0.1 + random() * 0.3,
+                baseColor: pickBucket(bodyBucket, bodyTotal),
+                midColor: prim,
+                tipColor: pickBucket(bodyBucket, bodyTotal),
+                depth: 0,
+                wiggleSeed: random() * 1000,
+            });
+        }
+
+        // Mid-layer: medium tongues in the middle band for layering depth
+        for (let k = 0; k < 18; k++) {
+            const x = random(-20, CANVAS_W + 20);
+            if (spriteHaloMask(x, CANVAS_H * 0.80) > 0.50) continue;
+            const d = flameDensity(x);
+            tongues.push({
+                rootX: x,
+                rootY: CANVAS_H + 10,
+                height: 130 + random() * 180,
+                baseWidth: 35 + random() * 35,
+                curlDir: random() < 0.5 ? -1 : 1,
+                curlAmount: 0.3 + random() * 1.0,
+                baseColor: pickBucket(bodyBucket, bodyTotal),
+                midColor:  pickBucket(bodyBucket, bodyTotal),
+                tipColor:  pickBucket(accBucket, accTotal),
+                depth: 0,
+                wiggleSeed: random() * 1000,
+            });
+        }
+
+        // Render small to large so tall tongues stack on top of shorter ones
+        tongues.sort((a, b) => a.height - b.height);
+        const tips = [];
+        for (const t of tongues) {
+            const tip = renderFlameTongue(g, t, sub, warpSeed);
+            if (tip && t.height > 110) tips.push({ x: tip.x, y: tip.y, hex: t.tipColor });
+        }
+
+        // ── 4.5. CURL-NOISE TURBULENCE: short particle streaks following a
+        // divergence-free flow field, layered over the flames. Adds visible
+        // "live" motion and turbulent character that pure blobs lack.
+        g.push();
+        g.blendMode(g.SCREEN);
+        g.noFill();
+        g.strokeCap(g.ROUND);
+        const NTURB = Math.floor(550 * intens);
+        const TURB_SCALE = 0.0048;
+        for (let i = 0; i < NTURB; i++) {
+            let x = random(CANVAS_W);
+            let y = random(CANVAS_H * 0.45, CANVAS_H);
+            if (spriteHaloMask(x, y) > 0.45) continue;
+            const hex = pickBucket(accBucket, accTotal);
+            const c = hexToRgb(hex);
+            const alpha = 70 + random() * 80;
+            g.stroke(c[0], c[1], c[2], alpha);
+            g.strokeWeight(0.5 + random() * 0.8);
+            g.beginShape();
+            for (let k = 0; k < 14; k++) {
+                g.vertex(x, y);
+                const cn = curlNoise(x, y, TURB_SCALE, 0);
+                x += cn.dx * 60;
+                y += cn.dy * 60 - 1.8;       // upward bias
+            }
+            g.endShape();
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+
+        // ── 5. EMBERS via 2D Poisson, anchored near tongue tips
+        const emberCandidates = poissonRect(20, CANVAS_W - 20, 60, CANVAS_H - 30, 32, 80);
+        const maxEmbers = Math.floor(40 * intens);
+        let emberCount = 0;
+        for (const e of emberCandidates) {
+            if (emberCount >= maxEmbers) break;
+            if (spriteHaloMask(e.x, e.y) > 0.45) continue;
+            let nearest = Infinity, nearestHex = null;
+            for (const tp of tips) {
+                const d = Math.hypot(e.x - tp.x, e.y - tp.y);
+                if (d < nearest) { nearest = d; nearestHex = tp.hex; }
+            }
+            if (nearest > 80) continue;
+            const hex = random() < 0.6 ? nearestHex : pickBucket(accBucket, accTotal);
+            drawBloom(g, e.x, e.y, hex, 5, 1.0);
+            g.push();
+            g.noStroke();
+            g.blendMode(g.SCREEN);
+            g.fill(255, 250, 230, 220);
+            g.circle(e.x, e.y, 2.2);
+            g.pop();
+            g.blendMode(g.BLEND);
+            emberCount++;
+        }
+
+        // ── 6. VIGNETTE
+        applyVignette(g, 0.38);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // SHARED HELPERS for the type engines below
+    // ═══════════════════════════════════════════════════════════════════════
+    // Linear-gradient-filled closed polygon using the native canvas API.
+    // Path is a list of {x, y}. Gradient runs from (gx0,gy0) to (gx1,gy1) with
+    // an array of {at, hex, alpha=1} stops.
+    function fillPathLinearGradient(g, path, gx0, gy0, gx1, gy1, stops) {
+        if (path.length < 2) return;
+        const ctx = g.drawingContext;
+        ctx.save();
+        ctx.beginPath();
+        ctx.moveTo(path[0].x, path[0].y);
+        for (let i = 1; i < path.length; i++) ctx.lineTo(path[i].x, path[i].y);
+        ctx.closePath();
+        const grad = ctx.createLinearGradient(gx0, gy0, gx1, gy1);
+        for (const s of stops) {
+            const c = hexToRgb(s.hex);
+            grad.addColorStop(s.at, `rgba(${c[0]},${c[1]},${c[2]},${s.alpha ?? 1})`);
+        }
+        ctx.fillStyle = grad;
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // Radial gradient-filled circle
+    function radialFillCircle(g, cx, cy, r, stops) {
+        const ctx = g.drawingContext;
+        ctx.save();
+        const grad = ctx.createRadialGradient(cx, cy, 0, cx, cy, r);
+        for (const s of stops) {
+            const c = hexToRgb(s.hex);
+            grad.addColorStop(s.at, `rgba(${c[0]},${c[1]},${c[2]},${s.alpha ?? 1})`);
+        }
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(cx, cy, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
+    }
+
+    // Helper: substrate fill from substrate→primary vertical gradient (subtle).
+    // direction: 'topDark' (default — darker top) or 'bottomDark'.
+    function fireSubstrate(g, sub, prim, direction = 'topDark') {
+        const dark = lerpHex(sub, '#000000', 0.45);
+        const warm = lerpHex(sub, prim, 0.18);
+        const topHex = direction === 'topDark' ? rgbToHex(...dark) : rgbToHex(...warm);
+        const botHex = direction === 'topDark' ? rgbToHex(...warm) : rgbToHex(...dark);
+        gradientFill(g, topHex, botHex);
+    }
+
+    // Branch / tree generator (used by Grass, Electric, Dragon)
+    // Returns array of {x, y, parent} nodes. Roots is array of {x, y, angle, length}.
+    function growBranches(roots, opts) {
+        const { maxNodes = 400, stepLen = 8, branchProb = 0.05,
+                branchAngle = Math.PI / 5, decay = 0.985, jitter = 0.25,
+                upBias = 0.0, killHeightFrac = 0.0 } = opts;
+        const nodes = roots.map(r => ({ x: r.x, y: r.y, parent: -1, depth: 0, angle: r.angle, len: r.length }));
+        const active = roots.map((_, i) => i);
+        while (active.length && nodes.length < maxNodes) {
+            const idx = active.shift();
+            const n = nodes[idx];
+            if (n.len < 2) continue;
+            if (killHeightFrac > 0 && n.y < CANVAS_H * killHeightFrac) continue;
+            const wob = (random() - 0.5) * jitter;
+            const ang = n.angle + wob - upBias;
+            const nx = n.x + Math.cos(ang) * stepLen;
+            const ny = n.y + Math.sin(ang) * stepLen;
+            if (nx < -30 || nx > CANVAS_W + 30 || ny < -30 || ny > CANVAS_H + 30) continue;
+            const nodeIdx = nodes.length;
+            nodes.push({ x: nx, y: ny, parent: idx, depth: n.depth + 1, angle: ang, len: n.len * decay });
+            active.push(nodeIdx);
+            // Optional branching
+            if (random() < branchProb && n.len > 8) {
+                const childLen = n.len * (0.55 + random() * 0.3);
+                const dir = random() < 0.5 ? -1 : 1;
+                const angB = ang + dir * branchAngle * (0.7 + random() * 0.6);
+                const xb = n.x + Math.cos(angB) * stepLen;
+                const yb = n.y + Math.sin(angB) * stepLen;
+                nodes.push({ x: xb, y: yb, parent: idx, depth: n.depth + 1, angle: angB, len: childLen });
+                active.push(nodes.length - 1);
+            }
+        }
+        return nodes;
+    }
+
+    // Compute subtree thickness for each node — number of descendants
+    function subtreeSizes(nodes) {
+        const out = new Int32Array(nodes.length);
+        for (let i = nodes.length - 1; i >= 0; i--) {
+            if (nodes[i].parent >= 0) out[nodes[i].parent] += out[i] + 1;
+        }
+        return out;
+    }
+
+    // Jagged lightning line via midpoint displacement
+    function drawLightning(g, x1, y1, x2, y2, depth, jitter, hex, alpha = 220, weight = 1.2) {
+        if (depth === 0) {
+            const c = hexToRgb(hex);
+            // Outer glow
+            g.stroke(c[0], c[1], c[2], alpha * 0.18);
+            g.strokeWeight(weight * 5);
+            g.line(x1, y1, x2, y2);
+            // Mid glow
+            g.stroke(c[0], c[1], c[2], alpha * 0.45);
+            g.strokeWeight(weight * 2);
+            g.line(x1, y1, x2, y2);
+            // Core
+            g.stroke(255, 250, 240, alpha);
+            g.strokeWeight(weight * 0.7);
+            g.line(x1, y1, x2, y2);
+            return;
+        }
+        const mx = (x1 + x2) / 2;
+        const my = (y1 + y2) / 2;
+        const dx = x2 - x1, dy = y2 - y1;
+        const len = Math.hypot(dx, dy);
+        const offset = (random() - 0.5) * len * jitter;
+        const nx = -dy / (len || 1), ny = dx / (len || 1);
+        const px = mx + nx * offset, py = my + ny * offset;
+        drawLightning(g, x1, y1, px, py, depth - 1, jitter * 0.65, hex, alpha, weight);
+        drawLightning(g, px, py, x2, y2, depth - 1, jitter * 0.65, hex, alpha, weight);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ENGINE: WATER — bubble Voronoi spheres + domain-warped flow bands
+    // ═══════════════════════════════════════════════════════════════════════
+    function engineWater(g, p) {
+        const roles = p.roles;
+        const sub = roles.substrate, prim = roles.primary;
+        const body = roles.buckets.body, bodyT = roles.buckets.bodyTotal;
+        const acc = roles.buckets.accent, accT = roles.buckets.accentTotal;
+
+        // 1. Substrate (top deep, bottom lighter)
+        const top = lerpHex(sub, '#000000', 0.45);
+        const bot = lerpHex(sub, prim, 0.35);
+        gradientFill(g, rgbToHex(...top), rgbToHex(...bot));
+
+        const warpSeed = random() * 1000;
+
+        // 2. Domain-warped flow bands (subtle depth layers)
+        const NBANDS = 8;
+        for (let i = 0; i < NBANDS; i++) {
+            const baseY = (i / NBANDS) * CANVAS_H + random(50);
+            const bandHeight = 55 + random() * 80;
+            const bandColor = pickBucket(body, bodyT);
+            const path = [];
+            const STEPS = 40;
+            for (let k = 0; k <= STEPS; k++) {
+                const x = (k / STEPS) * CANVAS_W;
+                const w = domainWarp(x, baseY, 30, warpSeed);
+                path.push({ x, y: baseY + Math.sin(x * 0.009 + i * 1.4) * 12 + w.dy * 0.8 });
+            }
+            for (let k = STEPS; k >= 0; k--) {
+                const x = (k / STEPS) * CANVAS_W;
+                const w = domainWarp(x, baseY + bandHeight, 20, warpSeed + 17);
+                path.push({ x, y: baseY + bandHeight + Math.sin(x * 0.008 - i) * 8 + w.dy * 0.5 });
+            }
+            fillPathLinearGradient(g, path, 0, baseY, 0, baseY + bandHeight, [
+                { at: 0,   hex: lerpHexToHex(sub, bandColor, 0.4), alpha: 0.22 },
+                { at: 0.5, hex: bandColor,                          alpha: 0.28 },
+                { at: 1,   hex: lerpHexToHex(bandColor, sub, 0.4), alpha: 0.18 }
+            ]);
+        }
+
+        // 3. Bubble Voronoi — Poisson-placed spherical bubbles with specular highlights
+        const sites = poissonRect(-30, CANVAS_W + 30, -30, CANVAS_H + 30, 46, 75);
+        for (const s of sites) {
+            if (spriteHaloMask(s.x, s.y) > 0.55) continue;
+            const r   = 20 + random() * 38;
+            const hex = pickBucket(body, bodyT);
+            const brightHex = lerpHexToHex(hex, '#ffffff', 0.58);
+            const rimHex    = lerpHexToHex(hex, sub, 0.35);
+            const accH      = pickBucket(acc, accT);
+            // Bubble wall: thin bright rim, transparent interior
+            radialFillCircle(g, s.x, s.y, r, [
+                { at: 0,    hex: lerpHexToHex(hex, '#ffffff', 0.15), alpha: 0.15 },
+                { at: 0.62, hex,                                      alpha: 0.22 },
+                { at: 0.83, hex: brightHex,                           alpha: 0.55 },
+                { at: 0.93, hex: rimHex,                              alpha: 0.72 },
+                { at: 1.0,  hex: rimHex,                              alpha: 0 }
+            ]);
+            // Primary specular — upper-left
+            radialFillCircle(g, s.x - r * 0.28, s.y - r * 0.28, r * 0.28, [
+                { at: 0, hex: '#ffffff', alpha: 0.92 },
+                { at: 1, hex: '#ffffff', alpha: 0 }
+            ]);
+            // Secondary refraction spot — lower-right (accent color)
+            radialFillCircle(g, s.x + r * 0.22, s.y + r * 0.28, r * 0.16, [
+                { at: 0, hex: accH, alpha: 0.65 },
+                { at: 1, hex: accH, alpha: 0 }
+            ]);
+        }
+
+        // 4. Foam / fine specks
+        g.push();
+        g.blendMode(g.SCREEN);
+        g.noStroke();
+        for (let k = 0; k < 100; k++) {
+            const x = random(CANVAS_W), y = random(CANVAS_H);
+            if (spriteHaloMask(x, y) > 0.5) continue;
+            const [r, gn, b] = hexToRgb(pickBucket(acc, accT));
+            g.fill(r, gn, b, 80 + random() * 130);
+            g.circle(x, y, 0.7 + random() * 1.8);
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+
+        applyVignette(g, 0.35);
+    }
+    function lerpHexToHex(a, b, t) {
+        return rgbToHex(...lerpHex(a, b, t));
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ENGINE: GRASS — space colonization (Runions 2007) leaf-vein vasculature
+    // ═══════════════════════════════════════════════════════════════════════
+    function engineGrass(g, p) {
+        const roles = p.roles;
+        const sub = roles.substrate, prim = roles.primary;
+        const body = roles.buckets.body, bodyT = roles.buckets.bodyTotal;
+        const acc = roles.buckets.accent, accT = roles.buckets.accentTotal;
+
+        const top = lerpHex(sub, '#000000', 0.48);
+        const bot = lerpHex(sub, prim, 0.15);
+        gradientFill(g, rgbToHex(...top), rgbToHex(...bot));
+
+        // Space colonization parameters
+        const D_INF = 120, D_KILL = 12, STEP_LEN = 6;
+
+        // Attractor points biased toward upper canvas
+        const NATTR = 800;
+        const attractors = [];
+        for (let i = 0; i < NATTR; i++) {
+            const y = Math.pow(random(), 0.65) * CANVAS_H;
+            attractors.push({ x: random(CANVAS_W), y, dead: false });
+        }
+
+        // Seed nodes at bottom edge
+        const NSEEDS = 5 + Math.floor(random() * 4);
+        const seedXs = poissonLine(30, CANVAS_W - 30, (CANVAS_W - 60) / NSEEDS, 0.4);
+        const nodes = [];
+        for (const sx of seedXs.slice(0, NSEEDS)) {
+            if (spriteHaloMask(sx, CANVAS_H - 10) > 0.55) continue;
+            nodes.push({ x: sx, y: CANVAS_H - 10, parent: -1, depth: 0 });
+        }
+
+        // Growth iteration
+        const MAX_ITER = 200;
+        for (let iter = 0; iter < MAX_ITER; iter++) {
+            // For each live attractor, find closest node within D_INF
+            const influences = new Map(); // nodeIdx -> [{ax, ay}]
+            for (const at of attractors) {
+                if (at.dead) continue;
+                let bestIdx = -1, bestD = D_INF;
+                for (let ni = 0; ni < nodes.length; ni++) {
+                    const dx = at.x - nodes[ni].x, dy = at.y - nodes[ni].y;
+                    const d = Math.sqrt(dx * dx + dy * dy);
+                    if (d < bestD) { bestD = d; bestIdx = ni; }
+                }
+                if (bestIdx >= 0) {
+                    if (!influences.has(bestIdx)) influences.set(bestIdx, []);
+                    influences.get(bestIdx).push({ ax: at.x, ay: at.y });
+                }
+            }
+            if (influences.size === 0) break;
+
+            const newNodes = [];
+            for (const [ni, ats] of influences) {
+                const nd = nodes[ni];
+                // Average direction from attractors
+                let sumX = 0, sumY = 0;
+                for (const a of ats) {
+                    const dx = a.ax - nd.x, dy = a.ay - nd.y;
+                    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+                    sumX += dx / len; sumY += dy / len;
+                }
+                const mag = Math.sqrt(sumX * sumX + sumY * sumY) || 1;
+                // Add noise wobble
+                const wobble = (noise(nd.x * 0.02, nd.y * 0.02, iter * 0.1) - 0.5) * 0.4;
+                const ang = Math.atan2(sumY / mag, sumX / mag) + wobble;
+                const nx = nd.x + Math.cos(ang) * STEP_LEN;
+                const ny = nd.y + Math.sin(ang) * STEP_LEN;
+                if (nx < 0 || nx > CANVAS_W || ny < -20 || ny > CANVAS_H + 20) continue;
+                newNodes.push({ x: nx, y: ny, parent: ni, depth: nd.depth + 1 });
+            }
+            if (newNodes.length === 0) break;
+
+            // Add new nodes and kill attractors within D_KILL
+            const startIdx = nodes.length;
+            for (const nn of newNodes) nodes.push(nn);
+            for (const at of attractors) {
+                if (at.dead) continue;
+                for (let ni = startIdx; ni < nodes.length; ni++) {
+                    const dx = at.x - nodes[ni].x, dy = at.y - nodes[ni].y;
+                    if (dx * dx + dy * dy < D_KILL * D_KILL) { at.dead = true; break; }
+                }
+            }
+        }
+
+        // Compute subtree sizes for thickness
+        const sizes = subtreeSizes(nodes);
+
+        // Render branches as Bezier-like strokes with midpoint perturbation
+        const baseHex = pickBucket(body, bodyT);
+        const tipHex = pickBucket(acc, accT);
+        g.strokeCap(g.ROUND);
+        g.noFill();
+        for (let i = 1; i < nodes.length; i++) {
+            const n = nodes[i];
+            if (n.parent < 0) continue;
+            if (spriteHaloMask(n.x, n.y) > 0.5) continue;
+            const par = nodes[n.parent];
+            const thickness = 0.8 + Math.min(7, Math.log(sizes[i] + 1) * 1.5);
+            const depthFrac = Math.min(1, n.depth / 30);
+            let col;
+            if (depthFrac < 0.5) col = lerpHex(sub, baseHex, depthFrac * 2);
+            else                  col = lerpHex(baseHex, tipHex, (depthFrac - 0.5) * 2);
+            g.stroke(col[0], col[1], col[2], 230);
+            g.strokeWeight(thickness);
+            g.line(par.x, par.y, n.x, n.y);
+        }
+
+        // Leaves: terminal nodes get full-size leaves; small-subtree nodes get side leaves
+        g.noStroke();
+        for (let i = 0; i < nodes.length; i++) {
+            const n = nodes[i];
+            if (n.parent < 0) continue;
+            if (spriteHaloMask(n.x, n.y) > 0.5) continue;
+            const isTerminal = sizes[i] === 0;
+            const isSmall = sizes[i] > 0 && sizes[i] <= 3;
+            // Terminal nodes always get a leaf; small subtrees get one with 50% chance
+            if (!isTerminal && (!isSmall || random() > 0.5)) continue;
+            const par = nodes[n.parent];
+            const ang = Math.atan2(n.y - par.y, n.x - par.x);
+            // Terminal leaves are larger; side-branch leaves are smaller
+            const scale = isTerminal ? 1.0 : 0.6 + random() * 0.3;
+            const leafLen = (14 + random() * 12) * scale;
+            const leafWid = (7 + random() * 5) * scale;
+            // Side leaves flare off at an angle
+            const leafAng = isTerminal ? ang : ang + (random() - 0.5) * 1.2;
+            const leafHex = pickBucket(body, bodyT);
+            const leafCol = hexToRgb(leafHex);
+            g.push();
+            g.translate(n.x, n.y);
+            g.rotate(leafAng);
+            g.fill(leafCol[0], leafCol[1], leafCol[2], isTerminal ? 230 : 180);
+            g.ellipse(leafLen / 2, 0, leafLen, leafWid);
+            g.pop();
+            // Tip flowers on upper leaves
+            if (isTerminal && n.y < CANVAS_H * 0.35 && random() < 0.40) {
+                const fc = hexToRgb(tipHex);
+                const fr = 3 + random() * 3;
+                g.fill(fc[0], fc[1], fc[2], 225);
+                g.circle(n.x, n.y, fr * 2);
+            }
+        }
+
+        applyVignette(g, 0.38);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ENGINE: ELECTRIC — DLA Lichtenberg figure + noise charge field
+    // ═══════════════════════════════════════════════════════════════════════
+    function engineElectric(g, p) {
+        const roles = p.roles;
+        const sub = roles.substrate, prim = roles.primary;
+        const acc = roles.buckets.accent, accT = roles.buckets.accentTotal;
+        const body = roles.buckets.body, bodyT = roles.buckets.bodyTotal;
+        const top = lerpHex(sub, '#000000', 0.62);
+        const bot = lerpHex(sub, prim, 0.08);
+        gradientFill(g, rgbToHex(...top), rgbToHex(...bot));
+
+        // Charged-field underlay: noise-based energy patches in palette colors
+        g.noStroke();
+        const ESCALE = 5;
+        const bodyHex1 = pickBucket(body, bodyT);
+        const bodyHex2 = pickBucket(body, bodyT);
+        const bodyRgb1 = hexToRgb(bodyHex1), bodyRgb2 = hexToRgb(bodyHex2);
+        for (let ey = 0; ey < CANVAS_H; ey += ESCALE) {
+            for (let ex = 0; ex < CANVAS_W; ex += ESCALE) {
+                const n = noise(ex * 0.012, ey * 0.012);
+                if (n < 0.52) continue;
+                if (spriteHaloMask(ex, ey) > 0.5) continue;
+                const t = (n - 0.52) / 0.48;
+                const cr = bodyRgb1[0] + (bodyRgb2[0] - bodyRgb1[0]) * t;
+                const cg = bodyRgb1[1] + (bodyRgb2[1] - bodyRgb1[1]) * t;
+                const cb = bodyRgb1[2] + (bodyRgb2[2] - bodyRgb1[2]) * t;
+                g.fill(cr, cg, cb, t * 55);
+                g.rect(ex, ey, ESCALE, ESCALE);
+            }
+        }
+
+        // DLA grid
+        const GW = 160, GH = 220;
+        const cluster = new Uint8Array(GW * GH);
+        const parent = new Int32Array(GW * GH).fill(-1);
+        const age = new Int32Array(GW * GH).fill(-1);
+
+        // 2–4 evenly-spaced seeds — prevents all clustering to one side
+        const NSEEDS = 2 + Math.floor(random() * 3);
+        const seedsX = [];
+        for (let i = 0; i < NSEEDS; i++) {
+            // Spread seeds evenly across bottom, with slight random offset
+            const sx = Math.floor((i + 0.3 + random() * 0.4) / NSEEDS * GW);
+            const sy = GH - 1 - Math.floor(random() * 3);
+            cluster[sy * GW + sx] = 1;
+            age[sy * GW + sx] = 0;
+            seedsX.push({ x: sx, y: sy });
+        }
+
+        const NWALKERS = 6000;
+        const MAX_STEPS = 2500;
+        let stuck = NSEEDS;
+        for (let w = 0; w < NWALKERS; w++) {
+            let x = Math.floor(random() * GW);
+            let y = Math.floor(random() * 8);
+            for (let step = 0; step < MAX_STEPS; step++) {
+                let parentIdx = -1;
+                for (let dy = -1; dy <= 1 && parentIdx < 0; dy++) {
+                    for (let dx = -1; dx <= 1 && parentIdx < 0; dx++) {
+                        if (dx === 0 && dy === 0) continue;
+                        const nx = x + dx, ny = y + dy;
+                        if (nx < 0 || nx >= GW || ny < 0 || ny >= GH) continue;
+                        if (cluster[ny * GW + nx]) parentIdx = ny * GW + nx;
+                    }
+                }
+                if (parentIdx >= 0) {
+                    const screenX = x * (CANVAS_W / GW);
+                    const screenY = y * (CANVAS_H / GH);
+                    if (spriteHaloMask(screenX, screenY) > 0.5) break;
+                    const i = y * GW + x;
+                    cluster[i] = 1;
+                    parent[i] = parentIdx;
+                    age[i] = stuck++;
+                    break;
+                }
+                const r = random();
+                if      (r < 0.55) y += 1;
+                else if (r < 0.65) y -= 1;
+                else if (r < 0.825) x -= 1;
+                else                x += 1;
+                if (x < 0) x = GW - 1;
+                if (x >= GW) x = 0;
+                if (y < 0) y = 0;
+                if (y >= GH) break;
+            }
+        }
+
+        // Render bolt — primary at trunk, accent at tips, white core
+        const SCALE_X = CANVAS_W / GW;
+        const SCALE_Y = CANVAS_H / GH;
+        const accHex   = pickBucket(acc, accT);
+        const accHex2  = pickBucket(acc, accT);
+        const primRgbE = hexToRgb(prim);
+        const accRgb   = hexToRgb(accHex);
+        const accRgb2  = hexToRgb(accHex2);
+
+        // Outer atmospheric glow — primary → accent from base to tip
+        g.push();
+        g.strokeCap(g.ROUND);
+        for (let i = 0; i < cluster.length; i++) {
+            if (!cluster[i] || parent[i] < 0) continue;
+            const x1 = (i % GW) * SCALE_X, y1 = Math.floor(i / GW) * SCALE_Y;
+            const x2 = (parent[i] % GW) * SCALE_X, y2 = Math.floor(parent[i] / GW) * SCALE_Y;
+            const t = age[i] / stuck;
+            const cr = primRgbE[0] + (accRgb[0] - primRgbE[0]) * t;
+            const cg = primRgbE[1] + (accRgb[1] - primRgbE[1]) * t;
+            const cb = primRgbE[2] + (accRgb[2] - primRgbE[2]) * t;
+            g.stroke(cr, cg, cb, 45);
+            g.strokeWeight(9);
+            g.line(x1, y1, x2, y2);
+        }
+        g.pop();
+
+        // Mid glow — accent2 at base, accent1 at tips (SCREEN for vivid hue shift)
+        g.push();
+        g.blendMode(g.SCREEN);
+        g.strokeCap(g.ROUND);
+        for (let i = 0; i < cluster.length; i++) {
+            if (!cluster[i] || parent[i] < 0) continue;
+            const x1 = (i % GW) * SCALE_X, y1 = Math.floor(i / GW) * SCALE_Y;
+            const x2 = (parent[i] % GW) * SCALE_X, y2 = Math.floor(parent[i] / GW) * SCALE_Y;
+            const t = age[i] / stuck;
+            const cr = accRgb2[0] + (accRgb[0] - accRgb2[0]) * t;
+            const cg = accRgb2[1] + (accRgb[1] - accRgb2[1]) * t;
+            const cb = accRgb2[2] + (accRgb[2] - accRgb2[2]) * t;
+            g.stroke(cr, cg, cb, 130);
+            g.strokeWeight(3.2);
+            g.line(x1, y1, x2, y2);
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+
+        // Bright white core
+        g.push();
+        g.strokeCap(g.ROUND);
+        for (let i = 0; i < cluster.length; i++) {
+            if (!cluster[i] || parent[i] < 0) continue;
+            const x1 = (i % GW) * SCALE_X, y1 = Math.floor(i / GW) * SCALE_Y;
+            const x2 = (parent[i] % GW) * SCALE_X, y2 = Math.floor(parent[i] / GW) * SCALE_Y;
+            g.stroke(255, 252, 220, 245);
+            g.strokeWeight(0.9);
+            g.line(x1, y1, x2, y2);
+        }
+        g.pop();
+
+        // A few bright sparks at seed positions (not 40!)
+        for (const s of seedsX) {
+            const px = s.x * SCALE_X, py = s.y * SCALE_Y;
+            drawBloom(g, px, py, accHex, 28, 1.8);
+        }
+
+        applyVignette(g, 0.45);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ENGINE: PSYCHIC — logarithmic spiral mandalas + energy vortex
+    // Multiple spiral centers, each with N arms rendered as point trails,
+    // composited in 4-fold symmetry with halo glow.
+    // ═══════════════════════════════════════════════════════════════════════
+    function enginePsychic(g, p) {
+        const roles = p.roles;
+        const sub = roles.substrate, prim = roles.primary;
+        const body = roles.buckets.body, bodyT = roles.buckets.bodyTotal;
+        const acc = roles.buckets.accent, accT = roles.buckets.accentTotal;
+        const top = lerpHex(sub, '#000000', 0.55);
+        const bot = lerpHex(sub, prim, 0.12);
+        gradientFill(g, rgbToHex(...top), rgbToHex(...bot));
+
+        // Helper: draw one logarithmic spiral from center outward
+        // r = a * e^(b*theta), rendered as thousands of small dots
+        function drawSpiral(cx, cy, NARMS, startAngle, maxR, bodyH, accH, baseAlpha) {
+            const b = 0.12 + random() * 0.08;   // tightness
+            const bRgb = hexToRgb(bodyH);
+            const aRgb = hexToRgb(accH);
+            g.noStroke();
+            for (let arm = 0; arm < NARMS; arm++) {
+                const armOffset = (arm / NARMS) * Math.PI * 2 + startAngle;
+                // Trace spiral outward
+                for (let t = 0; t < 600; t++) {
+                    const theta = t * 0.035;
+                    const r = 4 * Math.exp(b * theta);
+                    if (r > maxR) break;
+                    const angle = theta + armOffset;
+                    const px = cx + Math.cos(angle) * r;
+                    const py = cy + Math.sin(angle) * r;
+                    if (px < 0 || px > CANVAS_W || py < 0 || py > CANVAS_H) continue;
+                    if (spriteHaloMask(px, py) > 0.55) continue;
+                    const frac = r / maxR;
+                    // Body at center, accent at outer rim
+                    const cr = bRgb[0] + (aRgb[0] - bRgb[0]) * frac;
+                    const cg = bRgb[1] + (aRgb[1] - bRgb[1]) * frac;
+                    const cb = bRgb[2] + (aRgb[2] - bRgb[2]) * frac;
+                    const alpha = baseAlpha * (0.4 + frac * 0.6);
+                    const dotR = 1.5 + frac * 3.5;
+                    g.fill(cr, cg, cb, alpha);
+                    g.circle(px, py, dotR);
+                }
+            }
+        }
+
+        // Four spiral centers spread across the canvas
+        const centers = [
+            { cx: CANVAS_W * 0.32, cy: CANVAS_H * 0.30, narms: 3 + Math.floor(random() * 3), maxR: CANVAS_H * 0.52, symm: 4, alpha: 210 },
+            { cx: CANVAS_W * 0.68, cy: CANVAS_H * 0.55, narms: 2 + Math.floor(random() * 2), maxR: CANVAS_H * 0.36, symm: 2, alpha: 175 },
+            { cx: CANVAS_W * 0.20, cy: CANVAS_H * 0.68, narms: 2 + Math.floor(random() * 2), maxR: CANVAS_H * 0.28, symm: 2, alpha: 145 },
+            { cx: CANVAS_W * 0.76, cy: CANVAS_H * 0.22, narms: 2 + Math.floor(random() * 2), maxR: CANVAS_H * 0.25, symm: 2, alpha: 140 },
+        ];
+        const startAng = random() * Math.PI * 2;
+        const bodyH  = pickBucket(body, bodyT);
+        const accH1  = pickBucket(acc, accT);
+        const accH2  = pickBucket(acc, accT);
+        const accH3  = pickBucket(acc, accT);
+        const accHues = [accH1, accH2, accH3, accH1];
+
+        // 0) Psychic particle fog — fills dead space between arms across whole canvas
+        g.push();
+        g.blendMode(g.SCREEN);
+        g.noStroke();
+        for (let k = 0; k < 2200; k++) {
+            const x = random(CANVAS_W), y = random(CANVAS_H);
+            if (spriteHaloMask(x, y) > 0.5) continue;
+            let minDist = Infinity, nearCI = 0;
+            for (let ci = 0; ci < centers.length; ci++) {
+                const d = Math.hypot(x - centers[ci].cx, y - centers[ci].cy);
+                if (d < minDist) { minDist = d; nearCI = ci; }
+            }
+            const t = Math.max(0, 1 - minDist / (CANVAS_H * 0.65));
+            const nv = noise(x * 0.018, y * 0.018);
+            const alpha = 12 + t * 50 + nv * 22;
+            const col = hexToRgb(accHues[nearCI]);
+            g.fill(col[0], col[1], col[2], alpha);
+            g.circle(x, y, 0.7 + nv * 2.8);
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+
+        // 1) Background halos for all centers
+        for (const c of centers) {
+            radialFillCircle(g, c.cx, c.cy, c.maxR * 1.1, [
+                { at: 0,   hex: prim,  alpha: 0.20 },
+                { at: 0.5, hex: bodyH, alpha: 0.08 },
+                { at: 1,   hex: sub,   alpha: 0 }]);
+        }
+
+        // 2) Concentric psychic ripple rings from each center
+        g.push();
+        g.blendMode(g.SCREEN);
+        g.noFill();
+        for (let ci = 0; ci < centers.length; ci++) {
+            const { cx, cy, maxR } = centers[ci];
+            const ringHex = accHues[ci];
+            const rc = hexToRgb(ringHex);
+            const NRINGS = 6 + Math.floor(random() * 5);
+            for (let ri = 0; ri < NRINGS; ri++) {
+                const r = maxR * (0.15 + ri / NRINGS * 0.90);
+                const alpha = 55 * (1 - ri / NRINGS);
+                g.stroke(rc[0], rc[1], rc[2], alpha);
+                g.strokeWeight(0.6 + (1 - ri / NRINGS) * 1.4);
+                // Slightly wobbly ring via many short arcs
+                g.beginShape();
+                for (let k = 0; k <= 80; k++) {
+                    const a = (k / 80) * Math.PI * 2;
+                    const wobble = 1 + (noise(Math.cos(a) * 2 + ci * 10, Math.sin(a) * 2 + ri * 3) - 0.5) * 0.12;
+                    g.vertex(cx + Math.cos(a) * r * wobble, cy + Math.sin(a) * r * wobble);
+                }
+                g.endShape(g.CLOSE);
+            }
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+
+        // 3) Spirals at all four centers
+        g.push();
+        g.blendMode(g.SCREEN);
+        for (let ci = 0; ci < centers.length; ci++) {
+            const { cx, cy, narms, maxR, symm, alpha } = centers[ci];
+            const bH = ci === 0 ? bodyH : pickBucket(body, bodyT);
+            const aH = accHues[ci];
+            for (let rot = 0; rot < symm; rot++) {
+                g.push();
+                g.translate(cx, cy);
+                g.rotate(rot * (Math.PI * 2 / symm));
+                g.translate(-cx, -cy);
+                drawSpiral(cx, cy, narms, startAng + ci * 0.7, maxR, bH, aH, alpha);
+                g.pop();
+            }
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+
+        // 3b) Telepathic tendrils connecting spiral centers
+        g.push();
+        g.blendMode(g.SCREEN);
+        g.noFill();
+        g.strokeCap(g.ROUND);
+        for (let i = 0; i < centers.length; i++) {
+            for (let j = i + 1; j < centers.length; j++) {
+                const c1 = centers[i], c2 = centers[j];
+                if (Math.hypot(c1.cx - c2.cx, c1.cy - c2.cy) > CANVAS_H * 0.75) continue;
+                const midX = (c1.cx + c2.cx) / 2 + (noise(i * 3.1, j * 7.3) - 0.5) * 90;
+                const midY = (c1.cy + c2.cy) / 2 + (noise(i * 5.7, j * 2.9) - 0.5) * 90;
+                const rc = hexToRgb(accHues[i]);
+                // Soft outer glow
+                g.stroke(rc[0], rc[1], rc[2], 22);
+                g.strokeWeight(5);
+                g.beginShape();
+                g.curveVertex(c1.cx, c1.cy); g.curveVertex(c1.cx, c1.cy);
+                g.curveVertex(midX, midY);
+                g.curveVertex(c2.cx, c2.cy); g.curveVertex(c2.cx, c2.cy);
+                g.endShape();
+                // Bright core
+                g.stroke(rc[0], rc[1], rc[2], 75);
+                g.strokeWeight(0.7);
+                g.beginShape();
+                g.curveVertex(c1.cx, c1.cy); g.curveVertex(c1.cx, c1.cy);
+                g.curveVertex(midX, midY);
+                g.curveVertex(c2.cx, c2.cy); g.curveVertex(c2.cx, c2.cy);
+                g.endShape();
+            }
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+
+        // 4) Bright nucleus glow at each center
+        const nucColors = [accH1, accH2, accH3, accH1];
+        const nucSizes  = [62, 44, 32, 30];
+        for (let ci = 0; ci < centers.length; ci++) {
+            const { cx, cy } = centers[ci];
+            const nh = nucColors[ci];
+            const nr = nucSizes[ci];
+            radialFillCircle(g, cx, cy, nr, [
+                { at: 0,   hex: lerpHexToHex(nh, '#ffffff', 0.65), alpha: 0.92 },
+                { at: 0.4, hex: nh, alpha: 0.55 },
+                { at: 1,   hex: sub, alpha: 0 }]);
+        }
+
+        // 5) Floating energy dots along all spiral paths
+        g.push();
+        g.blendMode(g.SCREEN);
+        g.noStroke();
+        for (let k = 0; k < 200; k++) {
+            const ci = Math.floor(random() * centers.length);
+            const { cx, cy, narms, maxR } = centers[ci];
+            const theta = random() * Math.PI * 8;
+            const r = 4 * Math.exp(0.14 * theta);
+            const arm = Math.floor(random() * narms);
+            const ang = theta + startAng + ci * 0.7 + (arm / narms) * Math.PI * 2;
+            const px = cx + Math.cos(ang) * Math.min(r, maxR);
+            const py = cy + Math.sin(ang) * Math.min(r, maxR);
+            if (px < 0 || px > CANVAS_W || py < 0 || py > CANVAS_H) continue;
+            if (spriteHaloMask(px, py) > 0.5) continue;
+            const col = hexToRgb(accHues[ci]);
+            g.fill(col[0], col[1], col[2], 90 + random() * 130);
+            g.circle(px, py, 1.5 + random() * 4.5);
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+
+        applyVignette(g, 0.45);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ENGINE: POISON — Gray-Scott reaction-diffusion + drip oozing
+    // Iterates A' = A + Da·∇²A - A·B² + f·(1-A)
+    //          B' = B + Db·∇²B + A·B² - (f+k)·B
+    // Produces organic Turing patterns indistinguishable from biological venom.
+    // ═══════════════════════════════════════════════════════════════════════
+    function enginePoison(g, p) {
+        const roles = p.roles;
+        const sub = roles.substrate, prim = roles.primary;
+        const body = roles.buckets.body, bodyT = roles.buckets.bodyTotal;
+        const acc = roles.buckets.accent, accT = roles.buckets.accentTotal;
+        const top = lerpHex(sub, '#000000', 0.50);
+        const bot = lerpHex(sub, prim, 0.18);
+        gradientFill(g, rgbToHex(...top), rgbToHex(...bot));
+
+        // Domain-warped metaball field — reliable connected organic blobs
+        const PIXEL = 2; // render resolution (px per sample)
+        const cols = Math.ceil(CANVAS_W / PIXEL);
+        const rows = Math.ceil(CANVAS_H / PIXEL);
+
+        // Poisson-placed metaball centers; generous min count for full coverage
+        const centers = poissonRect(-40, CANVAS_W + 40, -20, CANVAS_H + 20, 58, 24);
+        const radii = centers.map(() => 28 + random() * 28);
+
+        // Single-pass domain warp (moderate amplitude)
+        const WARP = 60;
+        const wscale = 0.008;
+
+        // Palette: substrate at low field, primary at mid, accent bright at high
+        const subRgbP  = hexToRgb(sub);
+        const primRgb  = hexToRgb(prim);
+        const acc1Rgb  = hexToRgb(pickBucket(acc, accT));
+        const THRESHOLD = 1.0; // metaball iso-surface
+
+        g.noStroke();
+        for (let row = 0; row < rows; row++) {
+            for (let col = 0; col < cols; col++) {
+                const px0 = col * PIXEL;
+                const py0 = row * PIXEL;
+                if (spriteHaloMask(px0 + PIXEL * 0.5, py0 + PIXEL * 0.5) > 0.5) continue;
+
+                // Single domain warp pass
+                const wx1 = noise(px0 * wscale,       py0 * wscale      ) - 0.5;
+                const wy1 = noise(px0 * wscale + 3.7, py0 * wscale + 1.3) - 0.5;
+                const wx = px0 + wx1 * WARP;
+                const wy = py0 + wy1 * WARP;
+
+                // Metaball field: sum of r²/(d²+1) falloffs
+                let field = 0;
+                for (let ci = 0; ci < centers.length; ci++) {
+                    const dx = wx - centers[ci].x;
+                    const dy = wy - centers[ci].y;
+                    field += radii[ci] * radii[ci] / (dx * dx + dy * dy + 1);
+                }
+
+                if (field < THRESHOLD * 0.85) continue;
+                // Smooth alpha falloff at the iso-surface edge
+                const edgeAlpha = Math.min(1, (field - THRESHOLD * 0.85) / (THRESHOLD * 0.15));
+
+                // Normalize: 0 at isosurface, 1 at very high field (blob center)
+                const t = Math.min(1, (field - THRESHOLD) / (THRESHOLD * 1.5));
+                // substrate → primary → accent gradient
+                let cr, cg, cb;
+                if (t < 0.5) {
+                    const tt = t * 2;
+                    cr = subRgbP[0] + (primRgb[0] - subRgbP[0]) * tt;
+                    cg = subRgbP[1] + (primRgb[1] - subRgbP[1]) * tt;
+                    cb = subRgbP[2] + (primRgb[2] - subRgbP[2]) * tt;
+                } else {
+                    const tt = (t - 0.5) * 2;
+                    cr = primRgb[0] + (acc1Rgb[0] - primRgb[0]) * tt;
+                    cg = primRgb[1] + (acc1Rgb[1] - primRgb[1]) * tt;
+                    cb = primRgb[2] + (acc1Rgb[2] - primRgb[2]) * tt;
+                }
+
+                g.fill(cr, cg, cb, (185 + t * 70) * edgeAlpha);
+                g.rect(px0, py0, PIXEL, PIXEL);
+            }
+        }
+
+        // Soft blur pass to smooth pixel grid and create slime-like blending
+        g.filter(g.BLUR, 3);
+
+        // Toxic glow specks (SCREEN blend)
+        g.push();
+        g.blendMode(g.SCREEN);
+        g.noStroke();
+        for (let m = 0; m < 80; m++) {
+            const x = random(CANVAS_W), y = random(CANVAS_H);
+            if (spriteHaloMask(x, y) > 0.5) continue;
+            const [r2, gn, b2] = hexToRgb(pickBucket(acc, accT));
+            g.fill(r2, gn, b2, 90 + random() * 110);
+            g.circle(x, y, 1 + random() * 2.5);
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+
+        applyVignette(g, 0.38);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ENGINE: ICE — symmetric DLA snowflakes (real crystalline growth)
+    // DLA confined to a 60° wedge, then mirrored 12-fold to produce structurally
+    // correct snowflakes with 6-fold rotational + 1-fold mirror symmetry.
+    // ═══════════════════════════════════════════════════════════════════════
+    function engineIce(g, p) {
+        const roles = p.roles;
+        const sub = roles.substrate, prim = roles.primary;
+        const body = roles.buckets.body, bodyT = roles.buckets.bodyTotal;
+        const acc = roles.buckets.accent, accT = roles.buckets.accentTotal;
+        const top = lerpHex(sub, '#000000', 0.30);
+        const bot = lerpHex(sub, prim, 0.10);
+        gradientFill(g, rgbToHex(...top), rgbToHex(...bot));
+
+        // ---------- DLA snowflake generator (confined to 60° wedge) ----------
+        function growSnowflake(walkers) {
+            const GW = 140;
+            const cx = GW / 2;
+            const cy = GW / 2;
+            const cluster = new Uint8Array(GW * GW);
+            const parent = new Int32Array(GW * GW).fill(-1);
+            // Seed at center
+            const seedI = Math.floor(cy) * GW + Math.floor(cx);
+            cluster[seedI] = 1;
+
+            const maxR = GW / 2 - 4;
+            const maxR2 = maxR * maxR;
+            const wedgeAngle = Math.PI / 3;
+            let bboxR = 2;     // current cluster outer radius
+            let stuck = 1;
+
+            for (let w = 0; w < walkers; w++) {
+                // Spawn just outside current cluster at random wedge angle
+                const r = bboxR + 4;
+                const ang = random() * wedgeAngle;
+                let x = Math.floor(cx + Math.cos(ang) * r);
+                let y = Math.floor(cy + Math.sin(ang) * r);
+                if (x < 0 || x >= GW || y < 0 || y >= GW) continue;
+
+                for (let step = 0; step < 1500; step++) {
+                    // Stick check
+                    let parIdx = -1;
+                    for (let dy = -1; dy <= 1 && parIdx < 0; dy++) {
+                        for (let dx = -1; dx <= 1 && parIdx < 0; dx++) {
+                            if (dx === 0 && dy === 0) continue;
+                            const nx = x + dx, ny = y + dy;
+                            if (nx < 0 || nx >= GW || ny < 0 || ny >= GW) continue;
+                            if (cluster[ny * GW + nx]) parIdx = ny * GW + nx;
+                        }
+                    }
+                    if (parIdx >= 0) {
+                        const i = y * GW + x;
+                        cluster[i] = 1;
+                        parent[i] = parIdx;
+                        stuck++;
+                        // Update bbox radius
+                        const dx2 = x - cx, dy2 = y - cy;
+                        const rr = Math.sqrt(dx2 * dx2 + dy2 * dy2);
+                        if (rr > bboxR) bboxR = rr;
+                        break;
+                    }
+                    // Try random walk; reject moves that leave the wedge
+                    const oldX = x, oldY = y;
+                    const rr = random();
+                    if      (rr < 0.25) y -= 1;
+                    else if (rr < 0.50) y += 1;
+                    else if (rr < 0.75) x -= 1;
+                    else                 x += 1;
+                    // Constraint: must remain in wedge angle [0, π/3]
+                    const ndx = x - cx, ndy = y - cy;
+                    const newAng = Math.atan2(ndy, ndx);
+                    if (newAng < 0 || newAng > wedgeAngle) { x = oldX; y = oldY; }
+                    // Constraint: must remain inside max radius
+                    if (ndx * ndx + ndy * ndy > maxR2) break;
+                }
+            }
+            return { GW, cx, cy, cluster, parent };
+        }
+
+        // Place 4–6 snowflakes at different positions/sizes
+        const NFLAKES = 4 + Math.floor(random() * 3);
+        const flakePositions = poissonRect(60, CANVAS_W - 60, 60, CANVAS_H - 60, 160, NFLAKES * 3);
+        const flakes = flakePositions.slice(0, NFLAKES);
+        for (let fi = 0; fi < flakes.length; fi++) {
+            const f = flakes[fi];
+            if (spriteHaloMask(f.x, f.y) > 0.55) continue;
+            const walkers = 800 + Math.floor(random() * 1400);
+            const flake = growSnowflake(walkers);
+            const flakeRadius = 50 + random() * 110;
+            const scale = flakeRadius / (flake.GW / 2);
+            const baseHex = pickBucket(body, bodyT);
+            const tipHex  = pickBucket(acc, accT);
+            const baseRgb = hexToRgb(baseHex);
+            const tipRgb  = hexToRgb(tipHex);
+
+            // Render 12 mirror/rotation copies
+            for (let mir = 0; mir < 2; mir++) {
+                for (let rot = 0; rot < 6; rot++) {
+                    g.push();
+                    g.translate(f.x, f.y);
+                    g.rotate(rot * Math.PI / 3);
+                    if (mir === 1) g.scale(1, -1);
+                    // Draw branches as anti-aliased lines
+                    g.strokeCap(g.ROUND);
+                    for (let i = 0; i < flake.cluster.length; i++) {
+                        if (!flake.cluster[i] || flake.parent[i] < 0) continue;
+                        const x1 = ((i % flake.GW) - flake.cx) * scale;
+                        const y1 = (Math.floor(i / flake.GW) - flake.cy) * scale;
+                        const p_ = flake.parent[i];
+                        const x2 = ((p_ % flake.GW) - flake.cx) * scale;
+                        const y2 = (Math.floor(p_ / flake.GW) - flake.cy) * scale;
+                        // Color: base near center → tip at extremities
+                        const distFrac = Math.min(1, Math.hypot(x1, y1) / flakeRadius);
+                        const cr = baseRgb[0] + (tipRgb[0] - baseRgb[0]) * distFrac;
+                        const cg = baseRgb[1] + (tipRgb[1] - baseRgb[1]) * distFrac;
+                        const cb = baseRgb[2] + (tipRgb[2] - baseRgb[2]) * distFrac;
+                        // Outer glow
+                        g.stroke(cr, cg, cb, 30);
+                        g.strokeWeight(3.5);
+                        g.line(x1, y1, x2, y2);
+                        // Mid
+                        g.stroke(cr, cg, cb, 130);
+                        g.strokeWeight(1.4);
+                        g.line(x1, y1, x2, y2);
+                        // Bright core
+                        g.stroke(255, 252, 245, 220);
+                        g.strokeWeight(0.5);
+                        g.line(x1, y1, x2, y2);
+                    }
+                    g.pop();
+                }
+            }
+            // Central glow
+            radialFillCircle(g, f.x, f.y, 30,
+                [{ at: 0, hex: tipHex, alpha: 0.5 },
+                 { at: 1, hex: sub, alpha: 0 }]);
+        }
+
+        // Frost dust
+        g.push();
+        g.blendMode(g.SCREEN);
+        g.noStroke();
+        for (let k = 0; k < 220; k++) {
+            const x = random(CANVAS_W), y = random(CANVAS_H);
+            if (spriteHaloMask(x, y) > 0.5) continue;
+            const [r, gn, b] = hexToRgb(pickBucket(acc, accT));
+            g.fill(r, gn, b, 60 + random() * 130);
+            g.circle(x, y, 0.6 + random() * 1.6);
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+
+        applyVignette(g, 0.30);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ENGINE: FIGHTING — radial impact lines from focal point + bruised gradient
+    // ═══════════════════════════════════════════════════════════════════════
+    function engineFighting(g, p) {
+        const roles = p.roles;
+        const sub = roles.substrate, prim = roles.primary;
+        const body = roles.buckets.body, bodyT = roles.buckets.bodyTotal;
+        const acc = roles.buckets.accent, accT = roles.buckets.accentTotal;
+        const top = lerpHex(sub, '#000000', 0.40);
+        const bot = lerpHex(sub, prim, 0.25);
+        gradientFill(g, rgbToHex(...top), rgbToHex(...bot));
+
+        // Place 2-3 impact origins (off-center, away from sprite)
+        const origins = [
+            { x: CANVAS_W * 0.30, y: CANVAS_H * 0.45 },
+            { x: CANVAS_W * 0.18, y: CANVAS_H * 0.75 },
+            { x: CANVAS_W * 0.55, y: CANVAS_H * 0.30 },
+        ];
+        // Radial impact rings
+        g.push();
+        g.noFill();
+        g.blendMode(g.SCREEN);
+        for (const o of origins) {
+            const accHex = pickBucket(acc, accT);
+            const ac = hexToRgb(accHex);
+            for (let k = 0; k < 5; k++) {
+                const r = 30 + k * 24 + random() * 8;
+                g.stroke(ac[0], ac[1], ac[2], 100 - k * 18);
+                g.strokeWeight(1.4 - k * 0.2);
+                // Draw arc fragment (not full circle — fighting feels jagged)
+                const startA = random() * Math.PI * 2;
+                const arc = Math.PI * (0.5 + random() * 0.8);
+                g.beginShape();
+                for (let a = startA; a < startA + arc; a += 0.05) {
+                    g.vertex(o.x + Math.cos(a) * r, o.y + Math.sin(a) * r);
+                }
+                g.endShape();
+            }
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+
+        // Background noise texture: bruised energy field
+        g.noStroke();
+        const BSCALE = 6;
+        const bodyBg1 = pickBucket(body, bodyT);
+        const bodyBg2 = pickBucket(body, bodyT);
+        const bgRgb1 = hexToRgb(bodyBg1), bgRgb2 = hexToRgb(bodyBg2);
+        for (let by2 = 0; by2 < CANVAS_H; by2 += BSCALE) {
+            for (let bx2 = 0; bx2 < CANVAS_W; bx2 += BSCALE) {
+                if (spriteHaloMask(bx2, by2) > 0.5) continue;
+                const n = noise(bx2 * 0.014, by2 * 0.014);
+                if (n < 0.55) continue;
+                const t = (n - 0.55) / 0.45;
+                const cr = bgRgb1[0] + (bgRgb2[0] - bgRgb1[0]) * t;
+                const cg = bgRgb1[1] + (bgRgb2[1] - bgRgb1[1]) * t;
+                const cb = bgRgb1[2] + (bgRgb2[2] - bgRgb1[2]) * t;
+                g.fill(cr, cg, cb, t * 60);
+                g.rect(bx2, by2, BSCALE, BSCALE);
+            }
+        }
+
+        // Radial fracture lines from each origin — deep branching
+        g.push();
+        for (const o of origins) {
+            const NLINES = 20 + Math.floor(random() * 10);
+            for (let i = 0; i < NLINES; i++) {
+                const ang = (i / NLINES) * Math.PI * 2 + random() * 0.15;
+                const len = 100 + random() * 300;
+                const hex = pickBucket(body, bodyT);
+                const x1 = o.x + Math.cos(ang) * 10;
+                const y1 = o.y + Math.sin(ang) * 10;
+                const x2 = o.x + Math.cos(ang) * len;
+                const y2 = o.y + Math.sin(ang) * len;
+                if (spriteHaloMask(x2, y2) > 0.5) continue;
+                drawLightning(g, x1, y1, x2, y2, 5, 0.28, hex, 155, 1.0);
+                // Explicit splits at 55%, 70%, 85% of crack — more splits farther out
+                const splitFracs = [0.55, 0.70, 0.85];
+                for (const frac of splitFracs) {
+                    if (random() > 0.65) continue;
+                    const bx = o.x + Math.cos(ang) * len * frac;
+                    const by = o.y + Math.sin(ang) * len * frac;
+                    if (spriteHaloMask(bx, by) > 0.5) continue;
+                    const branchAng = ang + (random() - 0.5) * 1.5;
+                    const branchLen = len * (0.18 + random() * 0.32) * (1 - frac + 0.3);
+                    const bx2 = bx + Math.cos(branchAng) * branchLen;
+                    const by2 = by + Math.sin(branchAng) * branchLen;
+                    if (spriteHaloMask(bx2, by2) < 0.5)
+                        drawLightning(g, bx, by, bx2, by2, 4, 0.36, pickBucket(acc, accT), 105, 0.75);
+                }
+            }
+            // Motion blur streaks tangent to origin (kinetic shockwave)
+            g.push();
+            g.blendMode(g.SCREEN);
+            g.noFill();
+            const accHex = pickBucket(acc, accT);
+            const c = hexToRgb(accHex);
+            for (let k = 0; k < 8; k++) {
+                const startA = random() * Math.PI * 2;
+                const arcSpan = Math.PI * (0.15 + random() * 0.25);
+                const r = 50 + k * 22 + random() * 12;
+                g.stroke(c[0], c[1], c[2], 60 + random() * 40);
+                g.strokeWeight(0.8 + random() * 1.2);
+                g.beginShape();
+                for (let a = startA; a < startA + arcSpan; a += 0.05) {
+                    g.vertex(o.x + Math.cos(a) * r, o.y + Math.sin(a) * r);
+                }
+                g.endShape();
+            }
+            g.pop();
+            g.blendMode(g.BLEND);
+            // Bright impact center with multi-pass bloom
+            drawBloom(g, o.x, o.y, pickBucket(acc, accT), 22, 1.8);
+            drawBloom(g, o.x, o.y, pickBucket(acc, accT), 10, 1.4);
+        }
+        g.pop();
+
+
+        applyVignette(g, 0.42);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ENGINE: GROUND — stratified bands with strong domain warp + sub-stripes
+    // ═══════════════════════════════════════════════════════════════════════
+    function engineGround(g, p) {
+        const roles = p.roles;
+        const sub = roles.substrate, prim = roles.primary;
+        const body = roles.buckets.body, bodyT = roles.buckets.bodyTotal;
+        const acc = roles.buckets.accent, accT = roles.buckets.accentTotal;
+        const top = lerpHex(sub, '#000000', 0.30);
+        const bot = lerpHex(sub, prim, 0.20);
+        gradientFill(g, rgbToHex(...top), rgbToHex(...bot));
+
+        const warpSeed = random() * 1000;
+        const warpSeed2 = random() * 1000;
+
+        // Horizontal sediment bands with DOUBLE warp octave for visible folding
+        const NBANDS = 16;
+        const bandTops = [];  // store for grit-at-faults reference
+        let y = 0;
+        for (let i = 0; i < NBANDS && y < CANVAS_H; i++) {
+            const bh = 30 + random() * 80;
+            const hex = pickBucket(body, bodyT);
+            const path = [];
+            const STEPS = 56;
+            // Top edge — large warp (60) + small second octave
+            for (let k = 0; k <= STEPS; k++) {
+                const x = (k / STEPS) * CANVAS_W;
+                const w1 = domainWarp(x, y, 60, warpSeed);
+                const w2 = domainWarp(x * 2, y * 2, 18, warpSeed2);
+                path.push({ x, y: y + w1.dy + w2.dy * 0.4 });
+            }
+            // Bottom edge
+            for (let k = STEPS; k >= 0; k--) {
+                const x = (k / STEPS) * CANVAS_W;
+                const w1 = domainWarp(x, y + bh, 60, warpSeed);
+                const w2 = domainWarp(x * 2, (y + bh) * 2, 18, warpSeed2);
+                path.push({ x, y: y + bh + w1.dy + w2.dy * 0.4 });
+            }
+            fillPathLinearGradient(g, path, 0, y, 0, y + bh,
+                [{ at: 0, hex: lerpHexToHex(hex, '#000000', 0.2), alpha: 0.85 },
+                 { at: 1, hex, alpha: 0.85 }]);
+
+            // Geological sub-stripes within each band (3–5 thin color variations)
+            const NSUB = 3 + Math.floor(random() * 3);
+            for (let si = 0; si < NSUB; si++) {
+                const subY = y + (si / NSUB) * bh + random() * (bh / NSUB) * 0.5;
+                const subH = 2 + random() * 4;
+                const subHex = pickBucket(body, bodyT);
+                const subPath = [];
+                for (let k = 0; k <= 32; k++) {
+                    const x = (k / 32) * CANVAS_W;
+                    const w1 = domainWarp(x, subY, 55, warpSeed);
+                    subPath.push({ x, y: subY + w1.dy });
+                }
+                for (let k = 32; k >= 0; k--) {
+                    const x = (k / 32) * CANVAS_W;
+                    const w1 = domainWarp(x, subY + subH, 55, warpSeed);
+                    subPath.push({ x, y: subY + subH + w1.dy });
+                }
+                fillPathLinearGradient(g, subPath, 0, subY, 0, subY + subH,
+                    [{ at: 0, hex: lerpHexToHex(subHex, '#000000', 0.15), alpha: 0.6 },
+                     { at: 1, hex: subHex, alpha: 0.5 }]);
+            }
+
+            bandTops.push(y);
+            y += bh;
+        }
+
+        // Blur the strata bands before adding sharp details on top
+        g.filter(g.BLUR, 2);
+
+        // Fault lines: 5–8 diagonal accent fissures with wide glow + sharp crack
+        const faultPts = [];
+        const NFAULTS = 5 + Math.floor(random() * 4);
+        for (let i = 0; i < NFAULTS; i++) {
+            const x1 = random(CANVAS_W), y1 = random(CANVAS_H);
+            const ang = (random() < 0.5 ? -1 : 1) * (Math.PI / 4 + random() * 0.6);
+            const len = 220 + random() * 450;
+            const x2 = x1 + Math.cos(ang) * len, y2 = y1 + Math.sin(ang) * len;
+            faultPts.push({ x1, y1, x2, y2 });
+            const hex = pickBucket(acc, accT);
+            const glowHex = lerpHexToHex(hex, '#ffffff', 0.35);
+            // Wide soft glow channel
+            drawLightning(g, x1, y1, x2, y2, 3, 0.06, glowHex, 55, 5.0);
+            // Mid-weight colored crack
+            drawLightning(g, x1, y1, x2, y2, 4, 0.12, hex, 170, 1.8);
+            // Bright thin core
+            drawLightning(g, x1, y1, x2, y2, 4, 0.10, glowHex, 220, 0.6);
+        }
+
+        // Noise grain overlay — coarser, higher contrast for rocky texture
+        g.noStroke();
+        const GSCALE = 3;
+        for (let gy = 0; gy < CANVAS_H; gy += GSCALE) {
+            for (let gx = 0; gx < CANVAS_W; gx += GSCALE) {
+                if (spriteHaloMask(gx, gy) > 0.5) continue;
+                const coarse = (noise(gx * 0.020, gy * 0.020) - 0.5) * 2;
+                const fine   = (noise(gx * 0.10,  gy * 0.10)  - 0.5) * 2;
+                const shift  = coarse * 35 + fine * 14;
+                if (Math.abs(shift) < 5) continue;
+                const hex = pickBucket(body, bodyT);
+                const c = hexToRgb(hex);
+                const alpha = Math.abs(shift) * 3.0;
+                g.fill(
+                    Math.max(0, Math.min(255, c[0] + shift)),
+                    Math.max(0, Math.min(255, c[1] + shift * 0.7)),
+                    Math.max(0, Math.min(255, c[2] + shift * 0.4)),
+                    alpha
+                );
+                g.rect(gx, gy, GSCALE, GSCALE);
+            }
+        }
+
+        // Mineral grit — denser near faults
+        g.push();
+        g.blendMode(g.SCREEN);
+        g.noStroke();
+        for (let k = 0; k < 600; k++) {
+            const x = random(CANVAS_W), y = random(CANVAS_H);
+            if (spriteHaloMask(x, y) > 0.5) continue;
+            let nearFault = false;
+            for (const f of faultPts) {
+                const mx = (f.x1 + f.x2) / 2, my = (f.y1 + f.y2) / 2;
+                if (Math.hypot(x - mx, y - my) < 85) { nearFault = true; break; }
+            }
+            const [r, gn, b] = hexToRgb(pickBucket(acc, accT));
+            g.fill(r, gn, b, nearFault ? 160 : 70);
+            g.circle(x, y, 0.5 + random() * (nearFault ? 2.8 : 1.4));
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+
+        // Micro-cracks from fault endpoints
+        for (const f of faultPts) {
+            for (const [ex, ey] of [[f.x1, f.y1], [f.x2, f.y2]]) {
+                const NMICRO = 4 + Math.floor(random() * 4);
+                for (let m = 0; m < NMICRO; m++) {
+                    const ang = random() * Math.PI * 2;
+                    const len = 25 + random() * 80;
+                    const mx2 = ex + Math.cos(ang) * len;
+                    const my2 = ey + Math.sin(ang) * len;
+                    if (spriteHaloMask((ex + mx2) / 2, (ey + my2) / 2) > 0.5) continue;
+                    drawLightning(g, ex, ey, mx2, my2, 3, 0.28, pickBucket(acc, accT), 120, 0.8);
+                }
+            }
+        }
+
+        applyVignette(g, 0.35);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ENGINE: FLYING — volumetric clouds + crepuscular rays + wind particle flow
+    // ═══════════════════════════════════════════════════════════════════════
+    function engineFlying(g, p) {
+        const roles = p.roles;
+        const sub = roles.substrate, prim = roles.primary;
+        const body = roles.buckets.body, bodyT = roles.buckets.bodyTotal;
+        const acc = roles.buckets.accent, accT = roles.buckets.accentTotal;
+
+        // 1. Sky gradient
+        const top = lerpHex(sub, '#000000', 0.25);
+        const bot = lerpHex(sub, prim, 0.40);
+        gradientFill(g, rgbToHex(...top), rgbToHex(...bot));
+
+        // 2. Sun bloom — large soft radial in upper-left
+        const sunX = CANVAS_W * (0.08 + random() * 0.12);
+        const sunY = CANVAS_H * (0.04 + random() * 0.10);
+        const sunHex = pickBucket(acc, accT);
+        radialFillCircle(g, sunX, sunY, 300, [
+            { at: 0,    hex: lerpHexToHex(sunHex, '#ffffff', 0.55), alpha: 0.70 },
+            { at: 0.18, hex: sunHex,                                 alpha: 0.35 },
+            { at: 1,    hex: sub,                                    alpha: 0 }
+        ]);
+
+        // 3. Crepuscular god-rays radiating from sun
+        g.push();
+        g.blendMode(g.SCREEN);
+        const NRAYS = 10 + Math.floor(random() * 8);
+        for (let i = 0; i < NRAYS; i++) {
+            const ang = Math.PI * 0.15 + (i / NRAYS) * Math.PI * 1.1 + (random() - 0.5) * 0.18;
+            const rayLen = CANVAS_H * (0.7 + random() * 0.8);
+            const halfW  = (0.025 + random() * 0.06) * rayLen;
+            const rayHex = lerpHexToHex(pickBucket(acc, accT), '#ffffff', 0.45);
+            const perpX  = -Math.sin(ang), perpY = Math.cos(ang);
+            const ex = sunX + Math.cos(ang) * rayLen;
+            const ey = sunY + Math.sin(ang) * rayLen;
+            const path = [
+                { x: sunX + perpX * halfW * 0.05, y: sunY + perpY * halfW * 0.05 },
+                { x: ex  + perpX * halfW,          y: ey  + perpY * halfW },
+                { x: ex  - perpX * halfW,          y: ey  - perpY * halfW },
+                { x: sunX - perpX * halfW * 0.05,  y: sunY - perpY * halfW * 0.05 }
+            ];
+            fillPathLinearGradient(g, path, sunX, sunY, ex, ey, [
+                { at: 0,    hex: rayHex, alpha: 0.28 + random() * 0.18 },
+                { at: 0.55, hex: rayHex, alpha: 0.08 },
+                { at: 1,    hex: rayHex, alpha: 0 }
+            ]);
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+
+        // 4. Cloud formations — two depth layers (far + near)
+        function drawCloudLayer(count, minSpacing, yTop, yBot, sizeScale, alphaScale) {
+            const formations = poissonRect(-80, CANVAS_W + 80, yTop, yBot, minSpacing, count);
+            for (const f of formations) {
+                if (spriteHaloMask(f.x, f.y) > 0.45) continue;
+                const cloudW = (80 + random() * 200) * sizeScale;
+                const cloudH = cloudW * (0.25 + random() * 0.30);
+                const NBLOBS = 8 + Math.floor(random() * 10);
+                const baseHex   = pickBucket(body, bodyT);
+                const litHex    = lerpHexToHex(baseHex, '#ffffff', 0.55);
+                const shadowHex = lerpHexToHex(baseHex, sub, 0.50);
+                for (let bi = 0; bi < NBLOBS; bi++) {
+                    const ox = (noise(f.x * 0.008 + bi * 1.4, 0.1) - 0.5) * cloudW * 1.6;
+                    const oy = (noise(0.1, f.y * 0.008 + bi * 1.4) - 0.5) * cloudH * 1.2;
+                    const bx = f.x + ox, by = f.y + oy;
+                    if (spriteHaloMask(bx, by) > 0.5) continue;
+                    const r = cloudH * (0.50 + random() * 0.65);
+                    const litness = Math.max(0, Math.min(1, 0.5 - oy / cloudH));
+                    const cloudHex = litness > 0.5
+                        ? lerpHexToHex(baseHex, litHex, (litness - 0.5) * 2)
+                        : lerpHexToHex(shadowHex, baseHex, litness * 2);
+                    radialFillCircle(g, bx, by, r, [
+                        { at: 0,   hex: cloudHex, alpha: 0.90 * alphaScale },
+                        { at: 0.5, hex: baseHex,  alpha: 0.65 * alphaScale },
+                        { at: 1,   hex: sub,       alpha: 0 }
+                    ]);
+                }
+                radialFillCircle(g, f.x + (random()-0.5)*cloudW*0.3, f.y - cloudH*0.38, cloudH*0.65, [
+                    { at: 0, hex: litHex, alpha: 0.40 * alphaScale },
+                    { at: 1, hex: sub,    alpha: 0 }
+                ]);
+            }
+        }
+        // Far layer — smaller, higher, subtler
+        drawCloudLayer(18, 100, CANVAS_H * 0.02, CANVAS_H * 0.45, 0.65, 0.70);
+        // Near layer — larger, fuller coverage
+        drawCloudLayer(22, 90, CANVAS_H * 0.10, CANVAS_H * 0.88, 1.0, 1.0);
+
+        // 5. Wind gusts — smooth curl-noise curves, mix of thick gusts + thin streaks
+        g.push();
+        g.blendMode(SECONDARY_MODE ? g.SCREEN : g.BLEND);
+        g.noFill();
+        g.strokeCap(g.ROUND);
+        const NTRAILS = SECONDARY_MODE ? 45 : 120;
+        for (let i = 0; i < NTRAILS; i++) {
+            let x = random(-100, CANVAS_W * 0.55);
+            let y = random(CANVAS_H * 0.02, CANVAS_H * 0.98);
+            const trailHex = lerpHexToHex(pickBucket(acc, accT), '#ffffff', 0.15 + random() * 0.50);
+            const c = hexToRgb(trailHex);
+            const isGust = random() < 0.35;
+            const curlScale = 0.003 + random() * 0.003;
+            const speedX = 3.0 + random() * 4.5;
+
+            // Collect the path points first
+            const pts = [];
+            for (let step = 0; step < 120; step++) {
+                if (x > CANVAS_W + 100 || y < -50 || y > CANVAS_H + 50) break;
+                pts.push({ x, y });
+                const cn = curlNoise(x, y, curlScale, 0.3);
+                x += speedX + cn.dx * 12;
+                y += cn.dy * 3.5 + (noise(x * 0.002, y * 0.002 + 88) - 0.5) * 8;
+            }
+            if (pts.length < 4) continue;
+
+            // Wide + very transparent outer gust, narrowing to a semi-transparent core
+            const passes = isGust
+                ? [{ w: 22, a: 12 }, { w: 12, a: 20 }, { w: 5, a: 35 }, { w: 1.5, a: 55 }]
+                : [{ w: 14, a: 10 }, { w: 6,  a: 18 }, { w: 2,  a: 38 }];
+
+            for (const { w, a } of passes) {
+                g.stroke(c[0], c[1], c[2], a);
+                g.strokeWeight(w);
+                g.beginShape();
+                g.curveVertex(pts[0].x, pts[0].y);
+                for (const pt of pts) g.curveVertex(pt.x, pt.y);
+                g.curveVertex(pts[pts.length - 1].x, pts[pts.length - 1].y);
+                g.endShape();
+            }
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+
+        // 6. High-altitude cirrus streamers (skip stratus in secondary to avoid horizontal lines)
+        g.push();
+        g.blendMode(g.SCREEN);
+        g.noFill();
+        const NCIRRUS = SECONDARY_MODE ? 12 : 30;
+        for (let i = 0; i < NCIRRUS; i++) {
+            const y0 = random(CANVAS_H * 0.02, CANVAS_H * 0.50);
+            if (spriteHaloMask(CANVAS_W * 0.5, y0) > 0.6) continue;
+            const c = hexToRgb(lerpHexToHex(pickBucket(acc, accT), '#ffffff', 0.40));
+            g.stroke(c[0], c[1], c[2], 30 + random() * 55);
+            g.strokeWeight(0.5 + random() * 1.3);
+            g.beginShape();
+            let x = random(-40, CANVAS_W * 0.5), y = y0;
+            for (let step = 0; step < 110; step++) {
+                if (x > CANVAS_W + 50) break;
+                g.vertex(x, y);
+                const cn = curlNoise(x, y, 0.0020, 0.5);
+                x += 5 + cn.dx * 5;
+                y += cn.dy * 3 + (noise(x * 0.004, y0 * 0.007) - 0.5) * 6;
+            }
+            g.endShape();
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+
+        applyVignette(g, 0.28);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ENGINE: BUG — hexagonal compound eye tiling with palette-sampled cells
+    // ═══════════════════════════════════════════════════════════════════════
+    function engineBug(g, p) {
+        const roles = p.roles;
+        const sub = roles.substrate, prim = roles.primary;
+        const body = roles.buckets.body, bodyT = roles.buckets.bodyTotal;
+        const acc = roles.buckets.accent, accT = roles.buckets.accentTotal;
+        const top = lerpHex(sub, '#000000', 0.45);
+        const bot = lerpHex(sub, prim, 0.15);
+        gradientFill(g, rgbToHex(...top), rgbToHex(...bot));
+
+        // Hexagonal grid with per-cell color from palette
+        const hexSize = 22;
+        const hRow = hexSize * 1.5;
+        const hCol = hexSize * Math.sqrt(3);
+        for (let row = -1; row * hRow < CANVAS_H + hRow; row++) {
+            for (let col = -1; col * hCol < CANVAS_W + hCol; col++) {
+                const cx = col * hCol + (row % 2) * hCol * 0.5;
+                const cy = row * hRow;
+                if (spriteHaloMask(cx, cy) > 0.5) continue;
+                // Sample local color from noise field through palette
+                const n = noise(cx * 0.007, cy * 0.007);
+                const hex = n < 0.5 ? pickBucket(body, bodyT) : pickBucket(acc, accT);
+                const c = hexToRgb(hex);
+                const path = [];
+                for (let i = 0; i < 6; i++) {
+                    const a = i * Math.PI / 3 - Math.PI / 6;
+                    path.push({ x: cx + Math.cos(a) * hexSize, y: cy + Math.sin(a) * hexSize });
+                }
+                // Inner edge gradient — lens-like
+                fillPathLinearGradient(g, path, cx - hexSize, cy - hexSize, cx + hexSize, cy + hexSize, [
+                    { at: 0, hex, alpha: 0.95 },
+                    { at: 1, hex: lerpHexToHex(hex, '#000000', 0.40), alpha: 0.95 }
+                ]);
+                // Outline
+                g.push();
+                g.noFill();
+                g.stroke(0, 0, 0, 60);
+                g.strokeWeight(0.6);
+                g.beginShape();
+                for (const pt of path) g.vertex(pt.x, pt.y);
+                g.endShape(g.CLOSE);
+                g.pop();
+            }
+        }
+
+        // Per-facet micro-lens — every hex cell gets a dark pseudopupil + specular
+        // This is what makes it read as a compound eye (not scattered large pupils)
+        g.push();
+        g.noStroke();
+        for (let row = -1; row * hRow < CANVAS_H + hRow; row++) {
+            for (let col = -1; col * hCol < CANVAS_W + hCol; col++) {
+                const cx = col * hCol + (row % 2) * hCol * 0.5;
+                const cy = row * hRow;
+                if (spriteHaloMask(cx, cy) > 0.5) continue;
+                // Dark pseudopupil at center of each facet
+                const pAlpha = 65 + (noise(cx * 0.014, cy * 0.014) - 0.5) * 40;
+                g.fill(0, 0, 0, pAlpha);
+                g.circle(cx, cy, hexSize * 0.32);
+                // Specular glint — upper-left of each facet (consistent light direction)
+                const sAlpha = 50 + noise(cx * 0.016 + 9, cy * 0.016) * 50;
+                g.fill(255, 255, 255, sAlpha);
+                g.circle(cx - hexSize * 0.22, cy - hexSize * 0.22, hexSize * 0.24);
+            }
+        }
+        g.pop();
+
+        // Overall dome curvature — large radial glow suggesting the eye's curved surface
+        const domeCx = CANVAS_W * (0.35 + random() * 0.30);
+        const domeCy = CANVAS_H * (0.28 + random() * 0.25);
+        radialFillCircle(g, domeCx, domeCy, CANVAS_H * 0.72, [
+            { at: 0,    hex: lerpHexToHex(pickBucket(acc, accT), '#ffffff', 0.55), alpha: 0.18 },
+            { at: 0.35, hex: pickBucket(acc, accT), alpha: 0.08 },
+            { at: 1,    hex: sub, alpha: 0 }
+        ]);
+
+        // Iridescent shimmer pass — color-shift accent overlay based on hex position
+        g.push();
+        g.blendMode(g.SCREEN);
+        g.noStroke();
+        for (let row = -1; row * hexSize * 1.5 < CANVAS_H + hexSize; row++) {
+            for (let col = -1; col * hexSize * Math.sqrt(3) < CANVAS_W + hexSize; col++) {
+                const cx = col * hexSize * Math.sqrt(3) + (row % 2) * hexSize * Math.sqrt(3) * 0.5;
+                const cy = row * hexSize * 1.5;
+                if (spriteHaloMask(cx, cy) > 0.5) continue;
+                // Shimmer intensity driven by noise — only some cells shimmer
+                const shimmer = noise(cx * 0.022, cy * 0.022 + 500);
+                if (shimmer < 0.60) continue;
+                const iridT = (shimmer - 0.60) / 0.40;
+                // Cycle through accent colors based on position
+                const iridHex = pickBucket(acc, accT);
+                const ic = hexToRgb(iridHex);
+                const path2 = [];
+                for (let vi = 0; vi < 6; vi++) {
+                    const a = vi * Math.PI / 3 - Math.PI / 6;
+                    path2.push({ x: cx + Math.cos(a) * hexSize, y: cy + Math.sin(a) * hexSize });
+                }
+                fillPathLinearGradient(g, path2,
+                    cx - hexSize * 0.5, cy - hexSize * 0.5,
+                    cx + hexSize * 0.5, cy + hexSize * 0.5,
+                    [{ at: 0, hex: iridHex, alpha: iridT * 0.5 },
+                     { at: 1, hex: iridHex, alpha: iridT * 0.15 }]);
+            }
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+
+        // Gossamer silk web — bright white threads clearly visible over the hex grid
+        const webNodes = poissonRect(10, CANVAS_W - 10, 10, CANVAS_H - 10, 38, 70);
+        g.push();
+        g.noFill();
+        g.strokeCap(g.ROUND);
+        const MAX_SILK = 160;
+        for (let i = 0; i < webNodes.length; i++) {
+            for (let j = i + 1; j < webNodes.length; j++) {
+                const n1 = webNodes[i], n2 = webNodes[j];
+                const dist = Math.hypot(n1.x - n2.x, n1.y - n2.y);
+                if (dist > MAX_SILK) continue;
+                const mid = { x: (n1.x + n2.x) / 2, y: (n1.y + n2.y) / 2 };
+                if (spriteHaloMask(mid.x, mid.y) > 0.5) continue;
+                const t = 1 - dist / MAX_SILK;
+                // Sag the thread slightly downward (like real silk catching gravity)
+                const mx = mid.x + (noise(n1.x * 0.008, n2.y * 0.008) - 0.5) * 18;
+                const my = mid.y + Math.abs(noise(n2.x * 0.008, n1.y * 0.008) - 0.5) * 10 + (noise(n1.x * 0.008, n1.y * 0.008) - 0.5) * 12;
+                // Soft glow halo
+                g.stroke(240, 248, 255, t * 60);
+                g.strokeWeight(3.0);
+                g.beginShape();
+                g.curveVertex(n1.x, n1.y); g.curveVertex(n1.x, n1.y);
+                g.curveVertex(mx, my);
+                g.curveVertex(n2.x, n2.y); g.curveVertex(n2.x, n2.y);
+                g.endShape();
+                // Bright white core thread
+                g.stroke(255, 255, 255, t * 180);
+                g.strokeWeight(0.7);
+                g.beginShape();
+                g.curveVertex(n1.x, n1.y); g.curveVertex(n1.x, n1.y);
+                g.curveVertex(mx, my);
+                g.curveVertex(n2.x, n2.y); g.curveVertex(n2.x, n2.y);
+                g.endShape();
+            }
+        }
+        g.pop();
+
+        applyVignette(g, 0.40);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ENGINE: ROCK — cracked Voronoi-like cell stone
+    // ═══════════════════════════════════════════════════════════════════════
+    function engineRock(g, p) {
+        const roles = p.roles;
+        const sub = roles.substrate, prim = roles.primary;
+        const body = roles.buckets.body, bodyT = roles.buckets.bodyTotal;
+        const acc = roles.buckets.accent, accT = roles.buckets.accentTotal;
+        const top = lerpHex(sub, '#000000', 0.30);
+        const bot = lerpHex(sub, prim, 0.20);
+        gradientFill(g, rgbToHex(...top), rgbToHex(...bot));
+
+        // Build Voronoi sites via Poisson, including some bright accents
+        const sites = poissonRect(-20, CANVAS_W + 20, -20, CANVAS_H + 20, 55, 120);
+        for (const s of sites) {
+            // Vary cell brightness: occasional bright accent cells
+            s.hex = random() < 0.18
+                ? pickBucket(acc, accT)
+                : pickBucket(body, bodyT);
+        }
+        // Render Voronoi cells directly as rectangles (avoids p5.Graphics buffer issues)
+        const SCALE = 5;
+        g.noStroke();
+        for (let wy = 0; wy < CANVAS_H; wy += SCALE) {
+            for (let wx = 0; wx < CANVAS_W; wx += SCALE) {
+                let best = 0, bestD = Infinity, secD = Infinity;
+                for (let i = 0; i < sites.length; i++) {
+                    const dx = wx - sites[i].x, dy = wy - sites[i].y;
+                    const d = dx * dx + dy * dy;
+                    if (d < bestD) { secD = bestD; bestD = d; best = i; }
+                    else if (d < secD) secD = d;
+                }
+                const edge = Math.sqrt(secD) - Math.sqrt(bestD);
+                const c = hexToRgb(sites[best].hex);
+                const k = edge < 3.5 ? 0.30 : 1.0;
+                g.fill(c[0] * k, c[1] * k, c[2] * k);
+                g.rect(wx, wy, SCALE + 1, SCALE + 1);
+            }
+        }
+
+        // Cracks along edges via lightning lines between adjacent sites
+        for (let i = 0; i < sites.length; i++) {
+            for (let j = i + 1; j < sites.length; j++) {
+                const dx = sites[i].x - sites[j].x, dy = sites[i].y - sites[j].y;
+                if (dx * dx + dy * dy > 13000) continue;
+                if (random() > 0.30) continue;
+                const mx = (sites[i].x + sites[j].x) / 2;
+                const my = (sites[i].y + sites[j].y) / 2;
+                if (spriteHaloMask(mx, my) > 0.5) continue;
+                drawLightning(g, sites[i].x, sites[i].y, sites[j].x, sites[j].y, 3, 0.15,
+                    pickBucket(acc, accT), 90, 0.6);
+            }
+        }
+
+        // Mineral grit
+        g.push();
+        g.blendMode(g.SCREEN);
+        g.noStroke();
+        for (let k = 0; k < 200; k++) {
+            const x = random(CANVAS_W), y = random(CANVAS_H);
+            if (spriteHaloMask(x, y) > 0.5) continue;
+            const [r, gn, b] = hexToRgb(pickBucket(acc, accT));
+            g.fill(r, gn, b, 80);
+            g.circle(x, y, 0.5 + random() * 1.0);
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+        applyVignette(g, 0.40);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ENGINE: GHOST — dense wisps + density inversion + spectral beams
+    // ═══════════════════════════════════════════════════════════════════════
+    function engineGhost(g, p) {
+        const roles = p.roles;
+        const sub = roles.substrate, prim = roles.primary;
+        const body = roles.buckets.body, bodyT = roles.buckets.bodyTotal;
+        const acc = roles.buckets.accent, accT = roles.buckets.accentTotal;
+        const top = lerpHex(sub, '#000000', 0.20);
+        const bot = lerpHex(sub, prim, 0.20);
+        gradientFill(g, rgbToHex(...top), rgbToHex(...bot));
+
+        // Ghost shape layer: noise-based dark patches for negative-space silhouettes
+        g.noStroke();
+        for (let gy = 0; gy < CANVAS_H; gy += 8) {
+            for (let gx = 0; gx < CANVAS_W; gx += 8) {
+                if (spriteHaloMask(gx, gy) > 0.5) continue;
+                const n = noise(gx * 0.006, gy * 0.006);
+                if (n > 0.68) {
+                    const subRgb = hexToRgb(sub);
+                    g.fill(subRgb[0], subRgb[1], subRgb[2], 80 * (n - 0.68) / 0.32);
+                    g.rect(gx, gy, 8, 8);
+                }
+            }
+        }
+
+        // Ethereal glow patches — soft radial blobs scattered around canvas
+        // (replaces the "weird stripes" from the beam approach)
+        const glowPatches = poissonRect(30, CANVAS_W - 30, 30, CANVAS_H - 30, 80, 18);
+        for (const gp of glowPatches) {
+            if (spriteHaloMask(gp.x, gp.y) > 0.45) continue;
+            const hex = pickBucket(body, bodyT);
+            const r = 50 + random() * 90;
+            radialFillCircle(g, gp.x, gp.y, r, [
+                { at: 0,   hex, alpha: 0.12 },
+                { at: 0.6, hex, alpha: 0.06 },
+                { at: 1,   hex: sub, alpha: 0 }
+            ]);
+        }
+
+        // Wisp paths: each uses its own noise seed so they take varied paths
+        g.push();
+        g.noFill();
+        const NWISPS = 280;
+        for (let i = 0; i < NWISPS; i++) {
+            const x0 = random(CANVAS_W), y0 = random(CANVAS_H);
+            const wispSeed = random() * 9999;   // unique per wisp — no more uniform flow
+            // Mix body and accent wisps for visible color variation
+            const useAccent = random() < 0.30;
+            const hex = useAccent ? pickBucket(acc, accT) : pickBucket(body, bodyT);
+            const c = hexToRgb(hex);
+            // Accent wisps are brighter; body wisps are softer
+            g.stroke(c[0], c[1], c[2], useAccent ? 80 + random() * 70 : 45 + random() * 45);
+            g.strokeWeight(useAccent ? 1.6 + random() * 1.8 : 1.0 + random() * 2.0);
+            g.strokeCap(g.ROUND);
+            let x = x0, y = y0;
+            g.beginShape();
+            const steps = 40 + Math.floor(random() * 40);
+            for (let k = 0; k < steps; k++) {
+                if (spriteHaloMask(x, y) > 0.6) break;
+                g.vertex(x, y);
+                const w = domainWarp(x, y, 5, wispSeed);
+                const ang = noise(x * 0.004 + wispSeed * 0.01, y * 0.004) * Math.PI * 4;
+                x += Math.cos(ang) * 4.5 + w.dx * 0.4;
+                y += Math.sin(ang) * 4.5 + w.dy * 0.4;
+            }
+            g.endShape();
+        }
+        g.pop();
+
+        // Will-o-wisps (22, up from 14)
+        const glows = poissonRect(30, CANVAS_W - 30, 30, CANVAS_H - 30, 65, 22);
+        for (const gl of glows) {
+            if (spriteHaloMask(gl.x, gl.y) > 0.4) continue;
+            const hex = pickBucket(acc, accT);
+            const r2 = 35 + random() * 45;
+            radialFillCircle(g, gl.x, gl.y, r2, [
+                { at: 0,   hex: lerpHexToHex(hex, '#ffffff', 0.55), alpha: 0.85 },
+                { at: 0.35, hex, alpha: 0.55 },
+                { at: 1,   hex: sub, alpha: 0 }
+            ]);
+        }
+        applyVignette(g, 0.55);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ENGINE: DRAGON — multi-foci particle accretion + cosmic dust
+    // ═══════════════════════════════════════════════════════════════════════
+    function engineDragon(g, p) {
+        const roles = p.roles;
+        const sub = roles.substrate, prim = roles.primary;
+        const body = roles.buckets.body, bodyT = roles.buckets.bodyTotal;
+        const acc = roles.buckets.accent, accT = roles.buckets.accentTotal;
+        const top = lerpHex(sub, '#000000', 0.55);
+        const bot = lerpHex(sub, prim, 0.10);
+        gradientFill(g, rgbToHex(...top), rgbToHex(...bot));
+
+        const foci = [
+            { x: CANVAS_W * 0.30, y: CANVAS_H * 0.32, mass: 1.0 },
+            { x: CANVAS_W * 0.50, y: CANVAS_H * 0.55, mass: 0.6 }
+        ];
+
+        // Nebula gas clouds — large soft blobs before particles
+        const nebulaPositions = poissonRect(40, CANVAS_W - 40, 40, CANVAS_H - 40, 150, 8);
+        for (const nb of nebulaPositions) {
+            if (spriteHaloMask(nb.x, nb.y) > 0.5) continue;
+            const nbHex = pickBucket(body, bodyT);
+            const nbR = 80 + random() * 130;
+            radialFillCircle(g, nb.x, nb.y, nbR, [
+                { at: 0,   hex: nbHex,                           alpha: 0.22 },
+                { at: 0.5, hex: lerpHexToHex(nbHex, prim, 0.4), alpha: 0.10 },
+                { at: 1,   hex: sub,                             alpha: 0 }
+            ]);
+        }
+
+        // Particle accretion — each particle samples its own color for variety
+        const N = 3000;
+        g.push();
+        g.blendMode(g.SCREEN);
+        g.strokeCap(g.ROUND);
+        g.noFill();
+        for (let i = 0; i < N; i++) {
+            let x = random(CANVAS_W);
+            let y = random(CANVAS_H);
+            let nearest = foci[0];
+            for (const f of foci) {
+                const d1 = Math.hypot(x - nearest.x, y - nearest.y);
+                const d2 = Math.hypot(x - f.x, y - f.y);
+                if (d2 < d1) nearest = f;
+            }
+            const r0 = Math.hypot(x - nearest.x, y - nearest.y) || 1;
+            let vx = -(y - nearest.y) / r0 * 1.5;
+            let vy =  (x - nearest.x) / r0 * 1.5;
+            // Each particle gets its own color pair for palette variety
+            const baseHex = pickBucket(body, bodyT);
+            const tipHex  = pickBucket(acc, accT);
+
+            // Shorter trails near foci, longer at periphery — less geometric
+            const maxSteps = Math.max(4, Math.floor(4 + r0 / 22 + random() * 6));
+            for (let step = 0; step < maxSteps; step++) {
+                const px = x, py = y;
+                let ax = 0, ay = 0;
+                for (const f of foci) {
+                    const dx = f.x - x, dy = f.y - y;
+                    const d = Math.hypot(dx, dy);
+                    if (d < 10) continue;
+                    ax += dx / d * f.mass * 80 / (d * d);
+                    ay += dy / d * f.mass * 80 / (d * d);
+                }
+                // Add curl-noise turbulence to break geometric arc patterns
+                const ns = noise(x * 0.012, y * 0.012, step * 0.08);
+                ax += (ns - 0.5) * 0.6;
+                ay += (noise(x * 0.012 + 7.3, y * 0.012 + 2.1, step * 0.08) - 0.5) * 0.6;
+                vx += ax * 0.1;
+                vy += ay * 0.1;
+                x += vx;
+                y += vy;
+                if (x < 0 || x > CANVAS_W || y < 0 || y > CANVAS_H) break;
+                if (spriteHaloMask(x, y) > 0.6) break;
+                let dN = Infinity;
+                for (const f of foci) {
+                    const d = Math.hypot(x - f.x, y - f.y);
+                    if (d < dN) dN = d;
+                }
+                const heat = Math.max(0, 1 - dN / 280);
+                const col = lerpHex(baseHex, tipHex, heat);
+                g.stroke(col[0], col[1], col[2], 55 + heat * 90);
+                g.strokeWeight(0.4 + heat * 1.3);
+                g.line(px, py, x, y);
+            }
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+
+        // Bright nuclei at each focus
+        for (const f of foci) {
+            radialFillCircle(g, f.x, f.y, 80,
+                [{ at: 0, hex: pickBucket(acc, accT), alpha: 0.85 },
+                 { at: 0.4, hex: prim, alpha: 0.4 },
+                 { at: 1, hex: sub, alpha: 0 }]);
+        }
+
+        // Star field (150 stars)
+        g.push();
+        g.blendMode(g.SCREEN);
+        g.noStroke();
+        for (let k = 0; k < 150; k++) {
+            const x = random(CANVAS_W), y = random(CANVAS_H);
+            if (spriteHaloMask(x, y) > 0.5) continue;
+            const [r, gn, b] = hexToRgb(pickBucket(acc, accT));
+            g.fill(r, gn, b, 80 + random() * 150);
+            g.circle(x, y, 0.4 + random() * 1.8);
+        }
+        g.pop();
+        g.blendMode(g.BLEND);
+
+        applyVignette(g, 0.50);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ENGINE: STEEL — brushed metal + rivets + seams + hex grid + specular
+    // ═══════════════════════════════════════════════════════════════════════
+    function engineSteel(g, p) {
+        const roles = p.roles;
+        const sub = roles.substrate, prim = roles.primary;
+        const body = roles.buckets.body, bodyT = roles.buckets.bodyTotal;
+        const acc = roles.buckets.accent, accT = roles.buckets.accentTotal;
+        const top = lerpHex(sub, '#000000', 0.35);
+        const bot = lerpHex(sub, prim, 0.25);
+        gradientFill(g, rgbToHex(...top), rgbToHex(...bot));
+
+        // Subtle hex grid overlay — industrial texture at very low alpha
+        const HEX_SIZE = 28;
+        const hRow = HEX_SIZE * 1.5;
+        const hCol = HEX_SIZE * Math.sqrt(3);
+        g.push();
+        g.noFill();
+        g.stroke(255, 255, 255, 12);
+        g.strokeWeight(0.5);
+        for (let row = -1; row * hRow < CANVAS_H + hRow; row++) {
+            for (let col = -1; col * hCol < CANVAS_W + hCol; col++) {
+                const cx = col * hCol + (row % 2) * hCol * 0.5;
+                const cy = row * hRow;
+                if (spriteHaloMask(cx, cy) > 0.4) continue;
+                g.beginShape();
+                for (let vi = 0; vi < 6; vi++) {
+                    const a = vi * Math.PI / 3 - Math.PI / 6;
+                    g.vertex(cx + Math.cos(a) * HEX_SIZE, cy + Math.sin(a) * HEX_SIZE);
+                }
+                g.endShape(g.CLOSE);
+            }
+        }
+        g.pop();
+
+        // Anisotropic brushed striations — varied length and density
+        const brushAng = (random() - 0.5) * 0.4;
+        g.push();
+        g.noFill();
+        g.strokeCap(g.SQUARE);
+        for (let i = 0; i < 700; i++) {
+            const x = random(-60, CANVAS_W + 60);
+            const y = random(-30, CANVAS_H + 30);
+            if (spriteHaloMask(x + 40, y + 40) > 0.5) continue;
+            const hex = pickBucket(body, bodyT);
+            const c = hexToRgb(hex);
+            // Varied lengths: some short (texture), some long (structure)
+            const len = random() < 0.3 ? 30 + random() * 60 : 100 + random() * 280;
+            const luma = 0.5 + (noise(x * 0.01, y * 0.01) - 0.5) * 0.7;
+            g.stroke(c[0] * luma, c[1] * luma, c[2] * luma, 70 + random() * 40);
+            g.strokeWeight(0.4 + random() * 0.9);
+            const sx = Math.sin(brushAng) * len, sy = Math.cos(brushAng) * len;
+            g.line(x, y, x + sx, y + sy);
+        }
+        g.pop();
+
+        // Seam lines: 2 thin parallel lines near edges
+        const seamHex = pickBucket(body, bodyT);
+        const seamRgb = hexToRgb(seamHex);
+        g.push();
+        g.noFill();
+        g.stroke(seamRgb[0], seamRgb[1], seamRgb[2], 100);
+        g.strokeWeight(1.0);
+        const seamOffsets = [30, 34];
+        for (const so of seamOffsets) {
+            g.line(so, so, CANVAS_W - so, so);
+            g.line(so, CANVAS_H - so, CANVAS_W - so, CANVAS_H - so);
+        }
+        g.pop();
+
+        // Rivets: 6–10 filled circles at perimeter positions
+        const rivetHex = pickBucket(acc, accT);
+        const rivetRgb = hexToRgb(rivetHex);
+        const NRIVETS = 6 + Math.floor(random() * 5);
+        const rivetPositions = [
+            { x: 28, y: 28 }, { x: CANVAS_W - 28, y: 28 },
+            { x: 28, y: CANVAS_H - 28 }, { x: CANVAS_W - 28, y: CANVAS_H - 28 },
+            { x: CANVAS_W / 2, y: 28 }, { x: CANVAS_W / 2, y: CANVAS_H - 28 },
+            { x: 28, y: CANVAS_H / 2 }, { x: CANVAS_W - 28, y: CANVAS_H / 2 },
+            { x: CANVAS_W * 0.25, y: 28 }, { x: CANVAS_W * 0.75, y: CANVAS_H - 28 },
+        ];
+        g.push();
+        g.noStroke();
+        for (let ri = 0; ri < Math.min(NRIVETS, rivetPositions.length); ri++) {
+            const rv = rivetPositions[ri];
+            const r = 4 + random() * 2;
+            radialFillCircle(g, rv.x, rv.y, r,
+                [{ at: 0, hex: lerpHexToHex(rivetHex, '#ffffff', 0.4), alpha: 0.9 },
+                 { at: 0.6, hex: rivetHex, alpha: 0.85 },
+                 { at: 1, hex: lerpHexToHex(rivetHex, '#000000', 0.4), alpha: 0.8 }]);
+        }
+        g.pop();
+
+        // Specular band: wider, more pronounced
+        const ctx = g.drawingContext;
+        ctx.save();
+        ctx.globalCompositeOperation = 'screen';
+        const accHex = pickBucket(acc, accT);
+        const accRgb = hexToRgb(accHex);
+        const bandX = CANVAS_W * 0.38 + random() * CANVAS_W * 0.15;
+        const bandW = 200 + random() * 80;
+        const grad = ctx.createLinearGradient(bandX - bandW, 0, bandX + bandW, 0);
+        grad.addColorStop(0, 'rgba(0,0,0,0)');
+        grad.addColorStop(0.5, `rgba(${accRgb[0]},${accRgb[1]},${accRgb[2]},0.55)`);
+        grad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, CANVAS_W, CANVAS_H);
+        ctx.restore();
+
+        applyVignette(g, 0.35);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ENGINE: NORMAL — multi-scale curved truchet tiling with differential whorls
+    // ═══════════════════════════════════════════════════════════════════════
+    function engineNormal(g, p) {
+        const roles = p.roles;
+        const sub = roles.substrate, prim = roles.primary;
+        const body = roles.buckets.body, bodyT = roles.buckets.bodyTotal;
+        const acc = roles.buckets.accent, accT = roles.buckets.accentTotal;
+        const top = lerpHex(sub, '#000000', 0.30);
+        const bot = lerpHex(sub, prim, 0.20);
+        gradientFill(g, rgbToHex(...top), rgbToHex(...bot));
+
+        const warpSeed = random() * 1000;
+
+        // Layer 1: Curved Truchet tiling — quarter-circle arcs at grid intersections
+        // forming interwoven labyrinthine pathways.
+        const TILE = 36;
+        g.push();
+        g.noFill();
+        g.strokeCap(g.ROUND);
+        for (let ty = 0; ty < CANVAS_H + TILE; ty += TILE) {
+            for (let tx = 0; tx < CANVAS_W + TILE; tx += TILE) {
+                if (spriteHaloMask(tx + TILE / 2, ty + TILE / 2) > 0.4) continue;
+                // Two-state Truchet: which diagonal is the "knot"
+                const seed = noise(tx * 0.018, ty * 0.018);
+                const hex = pickBucket(body, bodyT);
+                const col = hexToRgb(hex);
+                g.stroke(col[0], col[1], col[2], 130);
+                g.strokeWeight(3.2);
+                if (seed < 0.5) {
+                    g.arc(tx, ty, TILE, TILE, 0, Math.PI / 2);
+                    g.arc(tx + TILE, ty + TILE, TILE, TILE, Math.PI, Math.PI * 1.5);
+                } else {
+                    g.arc(tx + TILE, ty, TILE, TILE, Math.PI / 2, Math.PI);
+                    g.arc(tx, ty + TILE, TILE, TILE, Math.PI * 1.5, Math.PI * 2);
+                }
+            }
+        }
+        g.pop();
+
+        // Layer 2: a few large concentric whorls (fingerprint-like accents)
+        const centers = poissonRect(40, CANVAS_W - 40, 40, CANVAS_H - 40, 220, 5);
+        g.push();
+        g.noFill();
+        g.strokeCap(g.ROUND);
+        for (const c of centers) {
+            if (spriteHaloMask(c.x, c.y) > 0.5) continue;
+            const NLOOPS = 10 + Math.floor(random() * 6);
+            const hex = pickBucket(acc, accT);
+            const col = hexToRgb(hex);
+            for (let i = 0; i < NLOOPS; i++) {
+                const r = 12 + i * 10;
+                g.stroke(col[0], col[1], col[2], 80 + random() * 60);
+                g.strokeWeight(1.0 + random() * 0.8);
+                g.beginShape();
+                for (let a = 0; a < Math.PI * 2 + 0.1; a += 0.06) {
+                    const wx = c.x + Math.cos(a) * r;
+                    const wy = c.y + Math.sin(a) * r;
+                    const w = domainWarp(wx, wy, 12, warpSeed);
+                    g.vertex(wx + w.dx, wy + w.dy);
+                }
+                g.endShape();
+            }
+            // Center dot
+            const accCol = hexToRgb(pickBucket(acc, accT));
+            g.noStroke();
+            g.fill(accCol[0], accCol[1], accCol[2], 220);
+            g.circle(c.x, c.y, 4 + random() * 3);
+            g.noFill();
+        }
+        g.pop();
+
+        // Layer 3: scattered poisson dots for stippled texture
+        g.push();
+        g.noStroke();
+        const dots = poissonRect(20, CANVAS_W - 20, 20, CANVAS_H - 20, 22, 200);
+        for (const d of dots) {
+            if (spriteHaloMask(d.x, d.y) > 0.5) continue;
+            const hex = pickBucket(body, bodyT);
+            const col = hexToRgb(hex);
+            g.fill(col[0], col[1], col[2], 80);
+            g.circle(d.x, d.y, 0.8 + random() * 1.5);
+        }
+        g.pop();
+
+        applyVignette(g, 0.32);
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // ENGINE: FALLBACK (placeholder for unimplemented types)
+    // Multi-octave noise field tinted by palette — still palette-driven and seeded.
+    // ═══════════════════════════════════════════════════════════════════════
+    function engineFallback(g, p, typeName) {
+        const bg = darkestOf(p);
+        g.background(bg);
+
+        const palette = p.colors;
+        const total = p.total;
+        const SCALE = 6;
+        const W = Math.ceil(CANVAS_W / SCALE);
+        const H = Math.ceil(CANVAS_H / SCALE);
+        const buf = createGraphics(W, H);
+        buf.loadPixels();
+        // Pre-sample a banded palette: top 6 colors at deciles
+        const cols = topColors(p, 6).map(hexToRgb);
+        for (let py = 0; py < H; py++) {
+            for (let px = 0; px < W; px++) {
+                const n = noise(px * 0.045, py * 0.045) * 0.7
+                        + noise(px * 0.12,  py * 0.12)  * 0.3;
+                const band = Math.min(cols.length - 1, Math.floor(n * cols.length));
+                const c = cols[band];
+                const idx = (py * W + px) * 4;
+                buf.pixels[idx] = c[0]; buf.pixels[idx+1] = c[1];
+                buf.pixels[idx+2] = c[2]; buf.pixels[idx+3] = 255;
+            }
+        }
+        buf.updatePixels();
+        g.image(buf, 0, 0, CANVAS_W, CANVAS_H);
+        buf.remove();
+
+        // Sparse palette flecks for texture
+        g.noStroke();
+        for (let i = 0; i < 400 * params.intensity; i++) {
+            const c = hexToRgb(pickWeighted(palette, total));
+            g.fill(c[0], c[1], c[2], 90);
+            g.circle(random(CANVAS_W), random(CANVAS_H), random(1, 3));
+        }
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // COMPOSITING: VOID (illustration area) + CARD FRAME
+    // ═══════════════════════════════════════════════════════════════════════
+    // Sprite cache: id -> p5.Image | 'missing'
+    const SPRITES = {};
+    function ensureSprite(p) {
+        if (SPRITES[p.id] !== undefined) return SPRITES[p.id];
+        SPRITES[p.id] = 'loading';
+        const path = `../scraper/img/${String(p.id).padStart(3,'0')}_${p.name}.png`;
+        loadImage(path,
+            (img) => { SPRITES[p.id] = img; if (currentPokemon && currentPokemon.id === p.id) render(); },
+            ()    => { SPRITES[p.id] = 'missing'; });
+        return 'loading';
+    }
+
+    function voidRect() {
+        // No surrounding border — just the bounding box the sprite is anchored to.
+        // Bottom-right corner of the card, scaled by voidSize.
+        const baseSide = 380;
+        const side = baseSide * params.voidSize;
+        const margin = 32;
+        return {
+            x: CANVAS_W - side - margin,
+            y: CANVAS_H - side - margin,
+            w: side, h: side
+        };
+    }
+    function drawVoid(p) {
+        const r = voidRect();
+        const sprite = ensureSprite(p);
+        if (sprite && sprite !== 'loading' && sprite !== 'missing') {
+            // Crisp integer-scale, anchored to bottom of the rect
+            const maxW = r.w, maxH = r.h;
+            const scale = Math.max(1, Math.floor(Math.min(maxW / sprite.width, maxH / sprite.height)));
+            const dw = sprite.width * scale, dh = sprite.height * scale;
+            const dx = r.x + (r.w - dw) / 2;
+            const dy = r.y + (r.h - dh); // anchor sprite to bottom of rect
+            push();
+            noSmooth();
+            image(sprite, dx, dy, dw, dh);
+            smooth();
+            pop();
+        } else if (sprite === 'loading') {
+            push();
+            noStroke();
+            fill(0, 80);
+            textAlign(CENTER, CENTER);
+            textFont('Courier New');
+            textSize(10);
+            text('LOADING SPRITE…', r.x + r.w / 2, r.y + r.h / 2);
+            pop();
+        }
+    }
+
+    function drawFrame(p) {
+        const alpha = params.frameOpacity * 255;
+        const bannerY = 24;
+        const bannerH = 46;
+        const pad = 22;
+
+        push();
+        // Header banner: cream background, no card border
+        noStroke();
+        fill(245, 240, 225, alpha);
+        rect(pad, bannerY, CANVAS_W - pad * 2, bannerH, 6);
+        stroke(20, 20, 20, alpha * 0.25);
+        strokeWeight(1);
+        noFill();
+        rect(pad, bannerY, CANVAS_W - pad * 2, bannerH, 6);
+
+        // Pokémon number (left)
+        noStroke();
+        fill(20, 20, 20, alpha * 0.55);
+        textAlign(LEFT, CENTER);
+        textFont('Courier New');
+        textSize(12);
+        text(`No. ${String(p.id).padStart(3,'0')}`, pad + 14, bannerY + bannerH / 2);
+
+        // Pokémon name (center-left, after number)
+        fill(20, 20, 20, alpha);
+        textAlign(LEFT, CENTER);
+        textFont('Lora');
+        textStyle(BOLD);
+        textSize(22);
+        const displayName = p.name.charAt(0).toUpperCase() + p.name.slice(1).replace(/-/g, ' ');
+        text(displayName, pad + 70, bannerY + bannerH / 2);
+
+        // Type chips (right side)
+        textFont('Poppins');
+        textStyle(NORMAL);
+        textSize(10);
+        textAlign(CENTER, CENTER);
+        let chipX = CANVAS_W - pad - 14;
+        for (let i = p.types.length - 1; i >= 0; i--) {
+            const t = p.types[i];
+            const c = hexToRgb(TYPE_COLOR[t]);
+            const label = t.toUpperCase();
+            const tw = textWidth(label) + 16;
+            noStroke();
+            fill(c[0], c[1], c[2], alpha);
+            rect(chipX - tw, bannerY + bannerH / 2 - 10, tw, 20, 10);
+            fill(255, alpha);
+            text(label, chipX - tw / 2, bannerY + bannerH / 2);
+            chipX -= tw + 6;
+        }
+
+        pop();
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // UI HANDLERS
+    // ═══════════════════════════════════════════════════════════════════════
+    function selectPokemon(idStr) {
+        const id = parseInt(idStr, 10);
+        if (!POKEDEX[id]) return;
+        params.pokemonId = id;
+        currentPokemon = POKEDEX[id];
+        const sel = document.getElementById('pokemon-select');
+        if (sel && sel.value !== String(id)) sel.value = String(id);
+        renderMetaPanel();
+        render();
+    }
+    function renderMetaPanel() {
+        const p = currentPokemon;
+        const meta = document.getElementById('meta');
+        meta.innerHTML = '';
+        p.types.forEach(t => {
+            const span = document.createElement('span');
+            span.className = 'chip';
+            span.style.background = TYPE_COLOR[t];
+            span.textContent = t;
+            meta.appendChild(span);
+        });
+        // Palette strip — widths proportional to frequency, top 12 only
+        const strip = document.getElementById('palette-strip');
+        strip.innerHTML = '';
+        const top = p.colors.slice(0, 12);
+        const sum = top.reduce((s, c) => s + c.count, 0);
+        top.forEach(c => {
+            const div = document.createElement('div');
+            div.style.background = c.hex;
+            div.style.flex = (c.count / sum).toString();
+            div.title = `${c.hex} (${c.count}px)`;
+            strip.appendChild(div);
+        });
+        // Roles panel: substrate / primary / secondary / accents
+        const panel = document.getElementById('roles-panel');
+        const r = p.roles;
+        const row = (label, hex) => `
+            <div class="role-row">
+                <span class="lbl">${label}</span>
+                <span class="sw" style="background:${hex}" title="${hex}"></span>
+                <span>${hex}</span>
+            </div>`;
+        const accentSwatches = r.accent.map(h =>
+            `<span class="sw" style="background:${h}" title="${h}"></span>`).join('');
+        panel.innerHTML =
+            row('substrate', r.substrate) +
+            row('primary',   r.primary) +
+            row('secondary', r.secondary) +
+            `<div class="role-row"><span class="lbl">accent</span><span class="accent-row">${accentSwatches}</span></div>` +
+            row('outline',   r.outline);
+    }
+    function updateParam(name, value) {
+        if (name === 'showFrame' || name === 'showVoid') {
+            params[name] = value;
+        } else {
+            params[name] = parseFloat(value);
+            const disp = document.getElementById(name + '-value');
+            if (disp) disp.textContent = parseFloat(value).toFixed(2);
+        }
+        render();
+    }
+    function updateSeedDisplay() {
+        document.getElementById('seed-input').value = params.seed;
+    }
+    function updateSeed() {
+        const v = parseInt(document.getElementById('seed-input').value, 10);
+        if (Number.isFinite(v) && v > 0) { params.seed = v; render(); }
+        else updateSeedDisplay();
+    }
+    function previousSeed() { params.seed = Math.max(1, params.seed - 1); updateSeedDisplay(); render(); }
+    function nextSeed() { params.seed += 1; updateSeedDisplay(); render(); }
+    function randomSeedAndUpdate() {
+        params.seed = Math.floor(Math.random() * 999999) + 1;
+        updateSeedDisplay(); render();
+    }
+    function resetParameters() {
+        params = {...defaultParams};
+        document.getElementById('intensity').value = params.intensity;
+        document.getElementById('intensity-value').textContent = params.intensity.toFixed(2);
+        document.getElementById('voidSize').value = params.voidSize;
+        document.getElementById('voidSize-value').textContent = params.voidSize.toFixed(2);
+        document.getElementById('frameOpacity').value = params.frameOpacity;
+        document.getElementById('frameOpacity-value').textContent = params.frameOpacity.toFixed(2);
+        document.getElementById('showFrame').checked = params.showFrame;
+        document.getElementById('showVoid').checked = params.showVoid;
+        document.getElementById('pokemon-select').value = params.pokemonId;
+        currentPokemon = POKEDEX[params.pokemonId];
+        renderMetaPanel();
+        updateSeedDisplay();
+        render();
+    }
+    function downloadCanvas() {
+        const p = currentPokemon;
+        const name = `${String(p.id).padStart(3,'0')}-${p.name}-seed${params.seed}`;
+        saveCanvas(name, 'png');
+    }
+
+    // ═══════════════════════════════════════════════════════════════════════
+    // BOOT
+    // ═══════════════════════════════════════════════════════════════════════
+    window.addEventListener('load', async () => {
+        try {
+            await loadPokedex();
+            populateDropdown();
+            currentPokemon = POKEDEX[params.pokemonId];
+            renderMetaPanel();
+            updateSeedDisplay();
+            // setup() may have already fired before loadPokedex resolved.
+            // If canvas exists, render now; otherwise setup() will call render().
+            if (typeof width !== 'undefined' && width > 0) render();
+        } catch (e) {
+            document.querySelector('.loading').textContent = 'Error: ' + e.message + ' — serve over HTTP (e.g. `python -m http.server` from project root).';
+            console.error(e);
+        }
+    });
+    </script>
+</body>
+</html>
